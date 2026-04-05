@@ -25,10 +25,11 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
     const key = useMemo(() => `typewriter-${typeof text === "string" ? text.slice(0, 32) : ""}`, [text]);
 
     useEffect(() => {
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             set("visible");
         }, 10);
         return () => {
+            clearTimeout(timeoutId);
             set("hidden");
         };
     }, [text]);

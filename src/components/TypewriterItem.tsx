@@ -1,6 +1,9 @@
 import emojiRegex from "emoji-regex";
 import { motion, Variants } from "motion/react";
-import { Key, ReactElement, RefObject, useRef } from "react";
+import { Key, ReactElement, RefObject, useMemo, useRef } from "react";
+
+// Created once at module level to avoid re-instantiating the regex on every call.
+const EMOJI_REGEX = emojiRegex();
 
 function throttle(func: (...args: any[]) => void, limit: number) {
     let lastCall = 0;
@@ -24,11 +27,10 @@ function throttle(func: (...args: any[]) => void, limit: number) {
  * @returns An array of characters and emojis.
  */
 function splitStringToCharactersAndEmoji(str: string): string[] {
-    const regex = emojiRegex();
     const result: string[] = [];
     let lastIndex = 0;
 
-    str.replace(regex, (match, offset) => {
+    str.replace(EMOJI_REGEX, (match, offset) => {
         if (offset > lastIndex) {
             result.push(...str.slice(lastIndex, offset).split(""));
         }
@@ -42,6 +44,30 @@ function splitStringToCharactersAndEmoji(str: string): string[] {
     }
 
     return result;
+}
+
+function CharacterSpan({
+    char,
+    className,
+    characterVariants,
+    onCharacterAnimationComplete,
+}: {
+    char: string;
+    className?: string;
+    characterVariants: Variants;
+    onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
+}) {
+    const ref = useRef<HTMLSpanElement>(null);
+    const onAnimationComplete = useMemo(
+        () => (onCharacterAnimationComplete ? throttle(() => onCharacterAnimationComplete(ref), 10) : undefined),
+        [onCharacterAnimationComplete]
+    );
+
+    return (
+        <motion.span ref={ref} className={className} variants={characterVariants} onAnimationComplete={onAnimationComplete}>
+            {char}
+        </motion.span>
+    );
 }
 
 export default function TypewriterItem({
@@ -60,47 +86,28 @@ export default function TypewriterItem({
     key?: Key | null | undefined;
 }) {
     if (typeof children === "string") {
-        // check if is emoji
-        const spanList = splitStringToCharactersAndEmoji(children).map((char, i) => {
-            const ref = useRef<HTMLSpanElement>(null);
-            const onAnimationComplete = onCharacterAnimationComplete
-                ? throttle(() => onCharacterAnimationComplete(ref), 10)
-                : undefined;
-
-            return (
-                <motion.span
-                    ref={ref}
-                    className={className}
-                    key={`span-${key}-${char}-${i}`}
-                    variants={characterVariants}
-                    onAnimationComplete={onAnimationComplete}
-                >
-                    {char}
-                </motion.span>
-            );
-        });
+        const spanList = splitStringToCharactersAndEmoji(children).map((char, i) => (
+            <CharacterSpan
+                key={`span-${key}-${char}-${i}`}
+                char={char}
+                className={className}
+                characterVariants={characterVariants}
+                onCharacterAnimationComplete={onCharacterAnimationComplete}
+            />
+        ));
         return dadElement(spanList, true);
     } else if (Array.isArray(children)) {
         const list = children.map((child) => {
             if (typeof child === "string") {
-                let spanList = child.split("").map((char, i) => {
-                    const ref = useRef<HTMLSpanElement>(null);
-                    const onAnimationComplete = onCharacterAnimationComplete
-                        ? throttle(() => onCharacterAnimationComplete(ref), 10)
-                        : undefined;
-                    return (
-                        <motion.span
-                            ref={ref}
-                            className={className}
-                            key={`span-${key}-${char}-${i}`}
-                            variants={characterVariants}
-                            onAnimationComplete={onAnimationComplete}
-                        >
-                            {char}
-                        </motion.span>
-                    );
-                });
-                return spanList;
+                return splitStringToCharactersAndEmoji(child).map((char, i) => (
+                    <CharacterSpan
+                        key={`span-${key}-${char}-${i}`}
+                        char={char}
+                        className={className}
+                        characterVariants={characterVariants}
+                        onCharacterAnimationComplete={onCharacterAnimationComplete}
+                    />
+                ));
             }
             return child;
         });
