@@ -11,7 +11,7 @@ export default defineConfig({
     bundle: true,
     skipNodeModulesBundle: false, // Skip bundling of node_modules
     entryPoints: ["src/index.ts"],
-    noExternal: ["motion"],
+    external: ["motion", "react", "react-dom", "react-markdown"],
     outExtension({ format }) {
         return {
             js: format === "esm" ? ".mjs" : ".cjs",
