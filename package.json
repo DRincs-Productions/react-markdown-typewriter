@@ -37,7 +37,7 @@
     "emoji-regex": "^10.6.0",
     "html-tags": "^5.1.0",
     "tsup": "^8.5.1",
-    "typescript": "^6.0.2"
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "motion": ">=12.9.0",
