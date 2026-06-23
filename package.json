@@ -8,12 +8,16 @@
   "files": [
     "dist"
   ],
+  "workspaces": [
+    "playground"
+  ],
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup --config tsup.config.ts",
     "lint": "biome lint",
     "check": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "playground": "npm run build && npm run dev --workspace=playground"
   },
   "exports": {
     ".": {
