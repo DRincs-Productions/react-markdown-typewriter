@@ -1,4 +1,4 @@
-import typewriterHook from "@/functions/typewriterHook";
+import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useMemo } from "react";
@@ -13,7 +13,7 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
         ...rest
     } = props;
     const { characterVariants, onCharacterAnimationComplete, ...restMotionProps } = motionProps;
-    const { sentenceVariants, components } = typewriterHook({
+    const { sentenceVariants, components } = useTypewriterHook({
         delay,
         characterVariants,
         onCharacterAnimationComplete,

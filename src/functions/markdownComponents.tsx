@@ -65,7 +65,6 @@ export default function markdownComponents({
                             return (
                                 <TypewriterItem
                                     key={id}
-                                    children={children}
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                                     dadElement={(children) => {
@@ -84,13 +83,14 @@ export default function markdownComponents({
                                         }
                                         return children;
                                     }}
-                                />
+                                >
+                                    {children}
+                                </TypewriterItem>
                             );
                         case "span":
                             return (
                                 <TypewriterItem
                                     key={id}
-                                    children={children}
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                                     dadElement={(children) => {
@@ -99,19 +99,21 @@ export default function markdownComponents({
                                                 <MotionComponent
                                                     {...componentProps}
                                                     key={`${tag}-${id}`}
-                                                    children={children}
-                                                />
+                                                >
+                                                    {children}
+                                                </MotionComponent>
                                             );
                                         }
                                         return children;
                                     }}
-                                />
+                                >
+                                    {children}
+                                </TypewriterItem>
                             );
                         default:
                             return (
                                 <TypewriterItem
                                     key={id}
-                                    children={children}
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                                     dadElement={(children, isString) => {
@@ -129,7 +131,9 @@ export default function markdownComponents({
                                             </MotionComponent>
                                         );
                                     }}
-                                />
+                                >
+                                    {children}
+                                </TypewriterItem>
                             );
                     }
                 };

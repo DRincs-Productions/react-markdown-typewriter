@@ -8,11 +8,11 @@ const DEFAULT_CHARACTER_VARIANTS: Variants = {
     visible: { opacity: 1, transition: { opacity: { duration: 0 } } },
 };
 
-export default function typewriterHook(props: {
+export default function useTypewriterHook(props: {
     delay?: MarkdownTypewriterProps["delay"];
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     characterVariants?: Variants;
-}) {
+}): { sentenceVariants: Variants; components: ReturnType<typeof markdownComponents> } {
     const {
         delay = 10,
         characterVariants: letterVariantsProp = DEFAULT_CHARACTER_VARIANTS,

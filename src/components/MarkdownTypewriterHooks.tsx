@@ -1,4 +1,4 @@
-import typewriterHook from "@/functions/typewriterHook";
+import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterHooksProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +13,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         ...rest
     } = props;
     const { characterVariants, onCharacterAnimationComplete, ...restMotionProps } = motionProps;
-    const { sentenceVariants, components } = typewriterHook({
+    const { sentenceVariants, components } = useTypewriterHook({
         delay,
         characterVariants,
         onCharacterAnimationComplete,
@@ -33,6 +33,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         [text],
     );
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: text change triggers animation reset
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             set("visible");
