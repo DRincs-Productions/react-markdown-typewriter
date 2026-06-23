@@ -1,4 +1,5 @@
 import TypewriterItem from "@/components/TypewriterItem";
+import type { SpecialCharacterOptions } from "@/interfaces/MarkdownTypewriterProps";
 import htmlTags from "html-tags";
 import {
     type ForwardRefComponent,
@@ -13,10 +14,12 @@ export default function markdownComponents({
     characterVariants,
     onCharacterAnimationComplete,
     delay,
+    specialCharacters,
 }: {
     characterVariants: Variants;
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     delay: number;
+    specialCharacters?: { [char: string]: SpecialCharacterOptions };
 }): Components {
     const res: Components = {};
     const sentenceVariants = {
@@ -67,6 +70,8 @@ export default function markdownComponents({
                                     key={id}
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
+                                    specialCharacters={specialCharacters}
+                                    delay={delay}
                                     dadElement={(children) => {
                                         if (Array.isArray(children)) {
                                             children.push(
@@ -93,6 +98,8 @@ export default function markdownComponents({
                                     key={id}
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
+                                    specialCharacters={specialCharacters}
+                                    delay={delay}
                                     dadElement={(children) => {
                                         if (Array.isArray(children)) {
                                             return (
@@ -116,6 +123,8 @@ export default function markdownComponents({
                                     key={id}
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
+                                    specialCharacters={specialCharacters}
+                                    delay={delay}
                                     dadElement={(children, isString) => {
                                         return (
                                             <MotionComponent

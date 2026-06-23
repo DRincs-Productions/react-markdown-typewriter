@@ -1,5 +1,5 @@
 import markdownComponents from "@/functions/markdownComponents";
-import type { MarkdownTypewriterProps } from "@/interfaces";
+import type { MarkdownTypewriterProps, SpecialCharacterOptions } from "@/interfaces";
 import type { Variants } from "motion/react";
 import { type RefObject, useMemo } from "react";
 
@@ -12,11 +12,13 @@ export default function useTypewriterHook(props: {
     delay?: MarkdownTypewriterProps["delay"];
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     characterVariants?: Variants;
+    specialCharacters?: { [char: string]: SpecialCharacterOptions };
 }): { sentenceVariants: Variants; components: ReturnType<typeof markdownComponents> } {
     const {
         delay = 10,
         characterVariants: letterVariantsProp = DEFAULT_CHARACTER_VARIANTS,
         onCharacterAnimationComplete,
+        specialCharacters,
     } = props;
     const sentenceVariants = useMemo<Variants>(
         () => ({
@@ -32,8 +34,9 @@ export default function useTypewriterHook(props: {
                 characterVariants,
                 onCharacterAnimationComplete,
                 delay,
+                specialCharacters,
             }),
-        [delay, characterVariants, onCharacterAnimationComplete],
+        [delay, characterVariants, onCharacterAnimationComplete, specialCharacters],
     );
 
     return {
