@@ -1,5 +1,5 @@
-import { MarkdownTypewriter } from "react-markdown-typewriter";
 import { useState } from "react";
+import { MarkdownTypewriter } from "react-markdown-typewriter";
 
 const DELAY = 30;
 
@@ -42,7 +42,14 @@ export default function App() {
     const current = cases[active];
 
     return (
-        <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 640, margin: "40px auto", padding: "0 20px" }}>
+        <div
+            style={{
+                fontFamily: "system-ui, sans-serif",
+                maxWidth: 640,
+                margin: "40px auto",
+                padding: "0 20px",
+            }}
+        >
             <h1 style={{ fontSize: 20, marginBottom: 8 }}>react-markdown-typewriter playground</h1>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -50,7 +57,10 @@ export default function App() {
                     <button
                         key={c.label}
                         type="button"
-                        onClick={() => { setActive(i); setKey((k) => k + 1); }}
+                        onClick={() => {
+                            setActive(i);
+                            setKey((k) => k + 1);
+                        }}
                         style={{
                             padding: "4px 10px",
                             borderRadius: 4,
@@ -71,7 +81,10 @@ export default function App() {
                     <input
                         type="checkbox"
                         checked={useSpecial}
-                        onChange={(e) => { setUseSpecial(e.target.checked); setKey((k) => k + 1); }}
+                        onChange={(e) => {
+                            setUseSpecial(e.target.checked);
+                            setKey((k) => k + 1);
+                        }}
                         style={{ marginRight: 4 }}
                     />
                     specialCharacters enabled
@@ -79,21 +92,29 @@ export default function App() {
                 <button
                     type="button"
                     onClick={() => setKey((k) => k + 1)}
-                    style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #ccc", cursor: "pointer", fontSize: 13 }}
+                    style={{
+                        padding: "4px 10px",
+                        borderRadius: 4,
+                        border: "1px solid #ccc",
+                        cursor: "pointer",
+                        fontSize: 13,
+                    }}
                 >
                     ↺ Replay
                 </button>
             </div>
 
-            <div style={{
-                border: "1px solid #e0e0e0",
-                borderRadius: 8,
-                padding: 20,
-                minHeight: 80,
-                background: "#fafafa",
-                fontSize: 18,
-                lineHeight: 1.6,
-            }}>
+            <div
+                style={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 8,
+                    padding: 20,
+                    minHeight: 80,
+                    background: "#fafafa",
+                    fontSize: 18,
+                    lineHeight: 1.6,
+                }}
+            >
                 <MarkdownTypewriter
                     key={key}
                     delay={DELAY}
@@ -103,7 +124,17 @@ export default function App() {
                 </MarkdownTypewriter>
             </div>
 
-            <pre style={{ marginTop: 16, fontSize: 12, color: "#666", background: "#f0f0f0", padding: 12, borderRadius: 6, overflow: "auto" }}>
+            <pre
+                style={{
+                    marginTop: 16,
+                    fontSize: 12,
+                    color: "#666",
+                    background: "#f0f0f0",
+                    padding: 12,
+                    borderRadius: 6,
+                    overflow: "auto",
+                }}
+            >
                 {`delay=${DELAY}ms\nspecialCharacters=${useSpecial ? JSON.stringify(SPECIAL_CHARACTERS, null, 2) : "undefined"}`}
             </pre>
         </div>
