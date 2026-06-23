@@ -1,6 +1,6 @@
 import emojiRegex from "emoji-regex";
-import { motion, Variants } from "motion/react";
-import { Key, ReactElement, RefObject, useMemo, useRef } from "react";
+import { motion, type Variants } from "motion/react";
+import { type Key, type ReactElement, type RefObject, useMemo, useRef } from "react";
 
 // Created once at module level to avoid re-instantiating the regex on every call.
 const EMOJI_REGEX = emojiRegex();

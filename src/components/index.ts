@@ -1,3 +1,3 @@
-export { default as MarkdownTypewriter } from "./MarkdownTypewriter";
-export { default as MarkdownTypewriterAsync } from "./MarkdownTypewriterAsync";
-export { default as MarkdownTypewriterHooks } from "./MarkdownTypewriterHooks";
+export { default as MarkdownTypewriter } from "@/components/MarkdownTypewriter";
+export { default as MarkdownTypewriterAsync } from "@/components/MarkdownTypewriterAsync";
+export { default as MarkdownTypewriterHooks } from "@/components/MarkdownTypewriterHooks";

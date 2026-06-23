@@ -1,6 +1,6 @@
-import { HTMLMotionProps, Variants } from "motion/react";
-import { RefObject } from "react";
-import { HooksOptions, Options } from "react-markdown";
+import type { HTMLMotionProps, Variants } from "motion/react";
+import type { RefObject } from "react";
+import type { HooksOptions, Options } from "react-markdown";
 
 interface TypewriterProps {
     /**

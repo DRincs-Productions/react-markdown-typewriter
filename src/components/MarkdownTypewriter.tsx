@@ -1,8 +1,8 @@
+import typewriterHook from "@/functions/typewriterHook";
+import type { MarkdownTypewriterProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useMemo } from "react";
 import Markdown from "react-markdown";
-import typewriterHook from "../functions/typewriterHook";
-import { MarkdownTypewriterProps } from "../interfaces";
 
 export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
     const {

@@ -2,18 +2,18 @@
   "compilerOptions": {
     "target": "ESNext",
     "jsx": "react-jsx",
-    "module": "commonjs",
+    "module": "esnext",
     "paths": {
       "@/*": ["./src/*"]
     },
     "declaration": true,
     "emitDeclarationOnly": true,
     "sourceMap": true,
-    "outDir": "dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src"]
 }

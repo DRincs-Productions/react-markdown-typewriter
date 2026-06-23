@@ -1,8 +1,13 @@
+import TypewriterItem from "@/components/TypewriterItem";
 import htmlTags from "html-tags";
-import { ForwardRefComponent, HTMLMotionProps, motion, Variants } from "motion/react";
-import { ClassAttributes, ElementType, HTMLAttributes, RefObject } from "react";
-import { Components, ExtraProps } from "react-markdown";
-import TypewriterItem from "../components/TypewriterItem";
+import {
+    type ForwardRefComponent,
+    type HTMLMotionProps,
+    motion,
+    type Variants,
+} from "motion/react";
+import type { ClassAttributes, ElementType, HTMLAttributes, RefObject } from "react";
+import type { Components, ExtraProps } from "react-markdown";
 
 export default function markdownComponents({
     characterVariants,
@@ -13,7 +18,7 @@ export default function markdownComponents({
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     delay: number;
 }): Components {
-    let res: Components = {};
+    const res: Components = {};
     const sentenceVariants = {
         hidden: characterVariants.hidden,
         visible: {
@@ -24,11 +29,11 @@ export default function markdownComponents({
     };
     htmlTags.forEach((tag) => {
         try {
-            let MotionComponent: ForwardRefComponent<HTMLHeadingElement, HTMLMotionProps<any>> = (
+            const MotionComponent: ForwardRefComponent<HTMLHeadingElement, HTMLMotionProps<any>> = (
                 motion as any
             )[tag];
             if (MotionComponent) {
-                let fn: ElementType<
+                const fn: ElementType<
                     ClassAttributes<HTMLHeadingElement> &
                         HTMLAttributes<HTMLHeadingElement> &
                         ExtraProps

@@ -1,7 +1,7 @@
-import { Variants } from "motion/react";
-import { RefObject, useMemo } from "react";
-import markdownComponents from "../functions/markdownComponents";
-import { MarkdownTypewriterProps } from "../interfaces";
+import markdownComponents from "@/functions/markdownComponents";
+import type { MarkdownTypewriterProps } from "@/interfaces";
+import type { Variants } from "motion/react";
+import { type RefObject, useMemo } from "react";
 
 const DEFAULT_CHARACTER_VARIANTS: Variants = {
     hidden: { opacity: 0 },
