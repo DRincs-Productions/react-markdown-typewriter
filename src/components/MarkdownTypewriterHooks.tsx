@@ -5,7 +5,13 @@ import typewriterHook from "../functions/typewriterHook";
 import { MarkdownTypewriterHooksProps } from "../interfaces/MarkdownTypewriterProps";
 
 export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksProps) {
-    const { delay = 10, children: text, motionProps = {}, components: externalComponents, ...rest } = props;
+    const {
+        delay = 10,
+        children: text,
+        motionProps = {},
+        components: externalComponents,
+        ...rest
+    } = props;
     const { characterVariants, onCharacterAnimationComplete, ...restMotionProps } = motionProps;
     const { sentenceVariants, components } = typewriterHook({
         delay,
@@ -19,10 +25,13 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
             ...components,
             ...(externalComponents || {}),
         }),
-        [components, externalComponents]
+        [components, externalComponents],
     );
 
-    const key = useMemo(() => `typewriter-${typeof text === "string" ? text.slice(0, 32) : ""}`, [text]);
+    const key = useMemo(
+        () => `typewriter-${typeof text === "string" ? text.slice(0, 32) : ""}`,
+        [text],
+    );
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -35,7 +44,13 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
     }, [text]);
 
     return (
-        <motion.span key={key} variants={sentenceVariants} initial='hidden' animate={animated} {...restMotionProps}>
+        <motion.span
+            key={key}
+            variants={sentenceVariants}
+            initial="hidden"
+            animate={animated}
+            {...restMotionProps}
+        >
             <MarkdownHooks {...rest} components={mergedComponents}>
                 {text}
             </MarkdownHooks>

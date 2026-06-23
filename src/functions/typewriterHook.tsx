@@ -23,7 +23,7 @@ export default function typewriterHook(props: {
             hidden: {},
             visible: { opacity: 1, transition: { staggerChildren: delay / 1000 } },
         }),
-        [delay]
+        [delay],
     );
     const characterVariants = useMemo<Variants>(() => letterVariantsProp, [letterVariantsProp]);
     const components = useMemo(
@@ -33,7 +33,7 @@ export default function typewriterHook(props: {
                 onCharacterAnimationComplete,
                 delay,
             }),
-        [delay, characterVariants, onCharacterAnimationComplete]
+        [delay, characterVariants, onCharacterAnimationComplete],
     );
 
     return {

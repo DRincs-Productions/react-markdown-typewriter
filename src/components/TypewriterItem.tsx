@@ -59,12 +59,20 @@ function CharacterSpan({
 }) {
     const ref = useRef<HTMLSpanElement>(null);
     const onAnimationComplete = useMemo(
-        () => (onCharacterAnimationComplete ? throttle(() => onCharacterAnimationComplete(ref), 10) : undefined),
-        [onCharacterAnimationComplete]
+        () =>
+            onCharacterAnimationComplete
+                ? throttle(() => onCharacterAnimationComplete(ref), 10)
+                : undefined,
+        [onCharacterAnimationComplete],
     );
 
     return (
-        <motion.span ref={ref} className={className} variants={characterVariants} onAnimationComplete={onAnimationComplete}>
+        <motion.span
+            ref={ref}
+            className={className}
+            variants={characterVariants}
+            onAnimationComplete={onAnimationComplete}
+        >
             {char}
         </motion.span>
     );
@@ -81,7 +89,10 @@ export default function TypewriterItem({
     children: any;
     className?: string;
     characterVariants: Variants;
-    dadElement: (children: ReactElement | ReactElement[], isString?: boolean) => ReactElement | ReactElement[];
+    dadElement: (
+        children: ReactElement | ReactElement[],
+        isString?: boolean,
+    ) => ReactElement | ReactElement[];
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     key?: Key | null | undefined;
 }) {
