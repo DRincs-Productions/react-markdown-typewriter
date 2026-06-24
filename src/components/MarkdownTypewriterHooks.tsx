@@ -46,6 +46,14 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         };
     }, [text]);
 
+    if (delay === 0) {
+        return (
+            <MarkdownHooks {...rest} components={externalComponents}>
+                {text}
+            </MarkdownHooks>
+        );
+    }
+
     return (
         <motion.span
             key={key}

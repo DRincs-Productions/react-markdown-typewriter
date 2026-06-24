@@ -34,6 +34,14 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
         [text],
     );
 
+    if (delay === 0) {
+        return await MarkdownAsync({
+            ...rest,
+            components: externalComponents,
+            children: text,
+        });
+    }
+
     const markdown = await MarkdownAsync({
         ...rest,
         components: mergedComponents,
