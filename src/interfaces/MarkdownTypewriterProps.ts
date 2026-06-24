@@ -5,21 +5,42 @@ import type { HooksOptions, Options } from "react-markdown";
 /**
  * Per-character animation overrides for a single special character.
  * Used in the `specialCharacters` prop.
+ *
+ * ### `delay` vs `delayAfter`
+ *
+ * - **`delay`** overrides how long the typewriter waits *before* this character appears
+ *   (i.e. it replaces the global stagger delay for this specific character).
+ *   No consecutive rule: every occurrence gets its own override, even in `"..."`.
+ *
+ * - **`delayAfter`** inserts a pause *after* this character before the next one appears.
+ *   Consecutive rule applies: for `"..."` only the **last** `.` triggers the pause;
+ *   for `". . ."` each `.` triggers its own pause because a space separates them.
+ *
+ * @example
+ * // Pause 400 ms after each sentence-ending "." but not within "..."
+ * // (the pause fires only after the third dot in "...").
+ * const specialChars = {
+ *     ".": { delayAfter: 400 },
+ *     ",": { delayAfter: 150 },
+ *     "!": { delayAfter: 500 },
+ *     "?": { delayAfter: 500 },
+ * };
  */
 export interface SpecialCharacterOptions {
     /**
-     * The delay in milliseconds to wait after this character appears before revealing the next one.
-     * Overrides the global `delay` for this character.
+     * Overrides the global stagger delay for THIS character — i.e. how long the typewriter
+     * waits before this character appears.
      *
-     * This delay is only applied when the character is **not** immediately followed by another
-     * special character. Consecutive special characters are treated as a group and only the
-     * last character's delay takes effect.
-     *
-     * @example
-     * // "..." → pause only after the third dot
-     * // ". . ." → pause after each dot (separated by spaces)
+     * **No consecutive rule**: every occurrence gets its own override, even in `"..."`.
      */
     delay?: number;
+    /**
+     * Inserts a pause *after* this character before the next one appears.
+     *
+     * **Consecutive rule applies**: in `"..."` only the LAST `.` triggers the pause;
+     * in `". . ."` each `.` triggers its own pause (a space breaks the sequence).
+     */
+    delayAfter?: number;
     /**
      * Custom motion variants for this character.
      * Overrides `motionProps.characterVariants` for this specific character.
@@ -38,25 +59,24 @@ interface TypewriterProps {
     /**
      * Per-character animation overrides for special characters (e.g. punctuation).
      *
-     * Each key must be a **single character**. The value is an {@link SpecialCharacterOptions}
-     * object that can override both the inter-character `delay` and the `characterVariants`
-     * for that specific character.
+     * Each key must be a **single character**. The value is a {@link SpecialCharacterOptions}
+     * object with three optional fields:
      *
-     * ### Consecutive special characters
-     * When two or more special characters appear directly next to each other (no other characters
-     * between them) the extra `delay` is applied **only after the last one** in the sequence.
-     * A character that appears between two special characters resets the sequence.
+     * - **`delay`** — overrides how long the typewriter waits *before* this character appears.
+     *   No consecutive rule: every occurrence gets its own override, including in `"..."`.
+     * - **`delayAfter`** — inserts a pause *after* this character before the next one appears.
+     *   Consecutive rule: in `"..."` only the **last** `.` triggers; in `". . ."` each `.` triggers.
+     * - **`characterVariants`** — custom framer-motion variants for this character.
      *
      * @example
      * ```tsx
-     * // Pause 300 ms after "." but not within "..." (pause only after the third dot).
-     * // Pause 200 ms after "," and 400 ms after "?" or "!".
+     * // Pause after punctuation; "..." only pauses once (after the third dot).
      * <MarkdownTypewriter
      *     specialCharacters={{
-     *         ".": { delay: 300 },
-     *         ",": { delay: 200 },
-     *         "!": { delay: 400 },
-     *         "?": { delay: 400 },
+     *         ".": { delayAfter: 400 },
+     *         ",": { delayAfter: 150 },
+     *         "!": { delayAfter: 500 },
+     *         "?": { delayAfter: 500 },
      *     }}
      * >
      *     Hello, world. How are you?

@@ -3,12 +3,12 @@ import { MarkdownTypewriter } from "react-markdown-typewriter";
 
 const DELAY = 30;
 
-const SPECIAL_CHARACTERS = {
-    ".": { delay: 500 },
-    ",": { delay: 200 },
-    "!": { delay: 600 },
-    "?": { delay: 600 },
-    ":": { delay: 300 },
+const SPECIAL_CHARACTERS: Record<string, { delay?: number; delayAfter?: number }> = {
+    ".": { delayAfter: 400 },
+    ",": { delayAfter: 150 },
+    "!": { delayAfter: 500 },
+    "?": { delayAfter: 500 },
+    ":": { delayAfter: 250 },
 };
 
 const cases = [

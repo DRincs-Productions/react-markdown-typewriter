@@ -116,15 +116,20 @@ In addition to the `react-markdown` component props, the component accepts the f
 
 `specialCharacters` is an object where each key is a single character and each value is a `SpecialCharacterOptions` object:
 
-* `delay`: The delay in milliseconds to wait after this character before the next character appears. Overrides the global `delay` for this character. (Optional)
+* `delay`: Overrides the global stagger delay for this character — controls how long the typewriter waits *before* this character appears. **No consecutive rule**: every occurrence gets its own override, even in `"..."`. (Optional)
+* `delayAfter`: Inserts a pause *after* this character before the next one appears. **Consecutive rule applies**: for `"..."` only the last `.` triggers the pause; for `". . ."` each `.` triggers (a space breaks the sequence). (Optional)
 * `characterVariants`: Custom motion variants for this specific character. Overrides `motionProps.characterVariants` for this character. (Optional)
 
-#### Consecutive special characters
+#### `delay` vs `delayAfter`
 
-When two or more special characters appear directly next to each other (no other characters between them), the extra `delay` is applied **only after the last one** in the sequence:
+| | `delay` | `delayAfter` |
+| --- | --- | --- |
+| Where the pause happens | Before this character appears | After this character, before the next |
+| Consecutive rule | None — fires for every occurrence | Only fires when the next char is NOT the same special char |
+| `"..."` | Each `.` gets its own delay | Only the last `.` triggers the pause |
+| `". . ."` | Each `.` gets its own delay | Each `.` triggers (space breaks the sequence) |
 
-* `"..."` with `"."` configured → pause only after the third dot.
-* `". . ."` with `"."` configured → pause after each dot (spaces break the sequence).
+The most common use case for punctuation pauses is `delayAfter`.
 
 #### Example
 
@@ -137,10 +142,11 @@ export default function NarrationScreen() {
             <MarkdownTypewriter
                 delay={20}
                 specialCharacters={{
-                    ".": { delay: 400 },
-                    ",": { delay: 200 },
-                    "!": { delay: 500 },
-                    "?": { delay: 500 },
+                    ".": { delayAfter: 400 },
+                    ",": { delayAfter: 150 },
+                    "!": { delayAfter: 500 },
+                    "?": { delayAfter: 500 },
+                    ":": { delayAfter: 250 },
                 }}
             >
                 Hello, world. How are you?
@@ -156,7 +162,7 @@ You can also override the animation for a specific character:
 <MarkdownTypewriter
     specialCharacters={{
         ".": {
-            delay: 400,
+            delayAfter: 400,
             characterVariants: {
                 hidden: { opacity: 0, scale: 0.5 },
                 visible: { opacity: 1, scale: 1, transition: { duration: 0.1 } },

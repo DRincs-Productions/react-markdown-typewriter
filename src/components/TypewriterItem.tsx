@@ -84,13 +84,17 @@ function CharacterSpan({
 }
 
 /**
- * Builds the span(s) for a single character.
+ * Builds the span(s) for a single character, including any phantom stagger-slot spans
+ * needed to implement `delay` (before the character) or `delayAfter` (after the character).
  *
- * When the character is a special character whose delay should apply (i.e. it is not
- * immediately followed by another special character), invisible phantom `motion.span`
- * elements are appended after it. These phantoms consume stagger slots in the parent
- * `staggerChildren` orchestration, effectively creating the extra pause before the next
- * visible character appears.
+ * `delay` — overrides the stagger slot for this character. Phantoms are inserted BEFORE the
+ * visible span so the character itself appears after a custom wait. No consecutive rule.
+ *
+ * `delayAfter` — inserts extra stagger slots AFTER the visible span. Consecutive rule: the
+ * phantoms are only emitted when the immediately following character is NOT the same special
+ * character (so `"..."` pauses only once, after the last dot).
+ *
+ * Guard: when `baseDelay === 0` all phantom logic is skipped (no animation, no phantoms).
  */
 function renderCharSpans(
     char: string,
@@ -104,12 +108,31 @@ function renderCharSpans(
     baseDelay: number,
 ): ReactElement[] {
     const specialConfig = specialCharacters?.[char];
-    const nextIsSpecial = nextChar !== undefined && specialCharacters?.[nextChar] !== undefined;
 
     // Use per-character variants when configured, otherwise fall back to the default.
     const charVariants = specialConfig?.characterVariants ?? defaultCharacterVariants;
 
-    const spans: ReactElement[] = [
+    const spans: ReactElement[] = [];
+
+    // `delay` — insert phantoms BEFORE the character. No consecutive rule.
+    if (baseDelay > 0 && specialConfig?.delay !== undefined) {
+        const phantomCount = Math.max(
+            0,
+            Math.round((specialConfig.delay - baseDelay) / baseDelay),
+        );
+        for (let p = 0; p < phantomCount; p++) {
+            spans.push(
+                <motion.span
+                    key={`phantom-b-${keyPrefix}-${index}-${p}`}
+                    variants={PHANTOM_VARIANTS}
+                    aria-hidden={true}
+                    style={PHANTOM_STYLE}
+                />,
+            );
+        }
+    }
+
+    spans.push(
         <CharacterSpan
             key={`span-${keyPrefix}-${char}-${index}`}
             char={char}
@@ -117,25 +140,27 @@ function renderCharSpans(
             characterVariants={charVariants}
             onCharacterAnimationComplete={onCharacterAnimationComplete}
         />,
-    ];
+    );
 
-    // Insert phantom stagger-slot spans to simulate a longer pause after a special character.
-    // Phantoms are only added when:
-    //   • this character has a configured delay, AND
-    //   • it is not directly followed by another special character
-    //     (consecutive special chars only pause after the last one in the sequence).
-    if (specialConfig?.delay !== undefined && !nextIsSpecial) {
-        const extraMs = specialConfig.delay - baseDelay;
-        const phantomCount = Math.max(0, Math.round(extraMs / baseDelay));
-        for (let p = 0; p < phantomCount; p++) {
-            spans.push(
-                <motion.span
-                    key={`phantom-${keyPrefix}-${char}-${index}-${p}`}
-                    variants={PHANTOM_VARIANTS}
-                    aria-hidden={true}
-                    style={PHANTOM_STYLE}
-                />,
+    // `delayAfter` — insert phantoms AFTER the character.
+    // Consecutive rule: skip when the very next char is the same special character.
+    if (baseDelay > 0 && specialConfig?.delayAfter !== undefined) {
+        const nextIsSameSpecial = nextChar === char;
+        if (!nextIsSameSpecial) {
+            const phantomCount = Math.max(
+                0,
+                Math.round((specialConfig.delayAfter - baseDelay) / baseDelay),
             );
+            for (let p = 0; p < phantomCount; p++) {
+                spans.push(
+                    <motion.span
+                        key={`phantom-a-${keyPrefix}-${index}-${p}`}
+                        variants={PHANTOM_VARIANTS}
+                        aria-hidden={true}
+                        style={PHANTOM_STYLE}
+                    />,
+                );
+            }
         }
     }
 
