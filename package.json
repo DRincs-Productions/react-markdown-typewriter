@@ -1,6 +1,6 @@
 {
   "name": "react-markdown-typewriter",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "React Markdown component where Typewriter effect with motion has been added.",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
