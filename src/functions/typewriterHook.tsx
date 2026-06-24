@@ -13,12 +13,14 @@ export default function useTypewriterHook(props: {
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     characterVariants?: Variants;
     specialCharacters?: { [char: string]: SpecialCharacterOptions };
+    accumulateConsecutiveDelays?: boolean;
 }): { sentenceVariants: Variants; components: ReturnType<typeof markdownComponents> } {
     const {
         delay = 10,
         characterVariants: letterVariantsProp = DEFAULT_CHARACTER_VARIANTS,
         onCharacterAnimationComplete,
         specialCharacters,
+        accumulateConsecutiveDelays,
     } = props;
     const sentenceVariants = useMemo<Variants>(
         () => ({
@@ -35,8 +37,9 @@ export default function useTypewriterHook(props: {
                 onCharacterAnimationComplete,
                 delay,
                 specialCharacters,
+                accumulateConsecutiveDelays,
             }),
-        [delay, characterVariants, onCharacterAnimationComplete, specialCharacters],
+        [delay, characterVariants, onCharacterAnimationComplete, specialCharacters, accumulateConsecutiveDelays],
     );
 
     return {

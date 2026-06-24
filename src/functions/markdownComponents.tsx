@@ -15,11 +15,13 @@ export default function markdownComponents({
     onCharacterAnimationComplete,
     delay,
     specialCharacters,
+    accumulateConsecutiveDelays,
 }: {
     characterVariants: Variants;
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     delay: number;
     specialCharacters?: { [char: string]: SpecialCharacterOptions };
+    accumulateConsecutiveDelays?: boolean;
 }): Components {
     const res: Components = {};
     const sentenceVariants = {
@@ -71,6 +73,7 @@ export default function markdownComponents({
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                                     specialCharacters={specialCharacters}
+                                    accumulateConsecutiveDelays={accumulateConsecutiveDelays}
                                     delay={delay}
                                     dadElement={(children) => {
                                         if (Array.isArray(children)) {
@@ -99,6 +102,7 @@ export default function markdownComponents({
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                                     specialCharacters={specialCharacters}
+                                    accumulateConsecutiveDelays={accumulateConsecutiveDelays}
                                     delay={delay}
                                     dadElement={(children) => {
                                         if (Array.isArray(children)) {
@@ -124,6 +128,7 @@ export default function markdownComponents({
                                     characterVariants={characterVariants}
                                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                                     specialCharacters={specialCharacters}
+                                    accumulateConsecutiveDelays={accumulateConsecutiveDelays}
                                     delay={delay}
                                     dadElement={(children, isString) => {
                                         return (

@@ -85,6 +85,23 @@ interface TypewriterProps {
      */
     specialCharacters?: { [char: string]: SpecialCharacterOptions };
     /**
+     * When `true`, consecutive special characters (any combination) accumulate their
+     * `delayAfter` values: the **last** character in the run fires with the sum of all
+     * delays in that run; all preceding ones are silenced.
+     *
+     * A "run" is any unbroken sequence of characters that each have a `delayAfter`
+     * configured. A non-special character (or a React element boundary) breaks the run.
+     *
+     * | Text | `false` (default) | `true` |
+     * |------|-------------------|--------|
+     * | `"..."` (`.delayAfter=400`) | last `.` → 400 ms | last `.` → 1 200 ms |
+     * | `".!."` (`.`=400, `!`=500) | each fires its own | last `.` → 1 300 ms |
+     * | `". . ."` | each `.` fires (space breaks) | each `.` fires (space breaks) |
+     *
+     * @default false
+     */
+    accumulateConsecutiveDelays?: boolean;
+    /**
      * The props to pass to the [motion span](https://motion.dev/docs/react-motion-component).
      *
      * The `characterVariants` parameter has been added to be able to modify the animation of each individual letter

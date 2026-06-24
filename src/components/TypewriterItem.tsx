@@ -84,15 +84,68 @@ function CharacterSpan({
 }
 
 /**
+ * Pre-computes the effective `delayAfter` for every character in `chars`.
+ *
+ * **Default mode** (`accumulate = false`):
+ * Each special character fires its own `delayAfter` unless the immediately following
+ * character is the same special character (consecutive-same rule). The optional
+ * `nextCharFromSibling` handles the cross-sibling boundary for the last char.
+ *
+ * **Accumulate mode** (`accumulate = true`):
+ * Any unbroken run of characters that each have a `delayAfter` configured is treated
+ * as a single unit: all but the last are silenced, and the last fires with the sum of
+ * all delays in the run. Non-special characters (or React-element boundaries) break
+ * the run. Cross-sibling accumulation is not performed.
+ */
+function buildDelayAfterMap(
+    chars: string[],
+    nextCharFromSibling: string | undefined,
+    specialCharacters: { [char: string]: SpecialCharacterOptions } | undefined,
+    accumulate: boolean,
+): (number | undefined)[] {
+    if (!specialCharacters) return chars.map(() => undefined);
+
+    if (accumulate) {
+        const result = new Array<number | undefined>(chars.length).fill(undefined);
+        let i = 0;
+        while (i < chars.length) {
+            const delay = specialCharacters[chars[i]]?.delayAfter;
+            if (delay !== undefined) {
+                let sum = delay;
+                let j = i + 1;
+                while (j < chars.length) {
+                    const d = specialCharacters[chars[j]]?.delayAfter;
+                    if (d === undefined) break;
+                    sum += d;
+                    j++;
+                }
+                result[j - 1] = sum;
+                i = j;
+            } else {
+                i++;
+            }
+        }
+        return result;
+    }
+
+    // Default: fire unless the immediately following char is the same special char.
+    return chars.map((char, i) => {
+        const delay = specialCharacters[char]?.delayAfter;
+        if (delay === undefined) return undefined;
+        const next = i < chars.length - 1 ? chars[i + 1] : nextCharFromSibling;
+        return next === char ? undefined : delay;
+    });
+}
+
+/**
  * Builds the span(s) for a single character, including any phantom stagger-slot spans
  * needed to implement `delay` (before the character) or `delayAfter` (after the character).
  *
  * `delay` — overrides the stagger slot for this character. Phantoms are inserted BEFORE the
  * visible span so the character itself appears after a custom wait. No consecutive rule.
  *
- * `delayAfter` — inserts extra stagger slots AFTER the visible span. Consecutive rule: the
- * phantoms are only emitted when the immediately following character is NOT the same special
- * character (so `"..."` pauses only once, after the last dot).
+ * `effectiveDelayAfter` — pre-computed by `buildDelayAfterMap`; inserts extra stagger slots
+ * AFTER the visible span. `undefined` means no pause for this character.
  *
  * Guard: when `baseDelay === 0` all phantom logic is skipped (no animation, no phantoms).
  */
@@ -100,7 +153,7 @@ function renderCharSpans(
     char: string,
     index: number,
     keyPrefix: string,
-    nextChar: string | undefined,
+    effectiveDelayAfter: number | undefined,
     defaultCharacterVariants: Variants,
     onCharacterAnimationComplete:
         | ((letterRef: RefObject<HTMLSpanElement | null>) => void)
@@ -144,24 +197,21 @@ function renderCharSpans(
     );
 
     // `delayAfter` — insert phantom stagger-slot spans AFTER the character.
-    // Consecutive rule: skip when the very next char is the same special character.
-    if (baseDelay > 0 && specialConfig?.delayAfter !== undefined) {
-        const nextIsSameSpecial = nextChar === char;
-        if (!nextIsSameSpecial) {
-            const phantomCount = Math.max(
-                0,
-                Math.round((specialConfig.delayAfter - baseDelay) / baseDelay),
+    // The effective value is pre-computed by buildDelayAfterMap.
+    if (baseDelay > 0 && effectiveDelayAfter !== undefined) {
+        const phantomCount = Math.max(
+            0,
+            Math.round((effectiveDelayAfter - baseDelay) / baseDelay),
+        );
+        for (let p = 0; p < phantomCount; p++) {
+            spans.push(
+                <motion.span
+                    key={`phantom-a-${keyPrefix}-${index}-${p}`}
+                    variants={PHANTOM_VARIANTS}
+                    aria-hidden={true}
+                    style={PHANTOM_STYLE}
+                />,
             );
-            for (let p = 0; p < phantomCount; p++) {
-                spans.push(
-                    <motion.span
-                        key={`phantom-a-${keyPrefix}-${index}-${p}`}
-                        variants={PHANTOM_VARIANTS}
-                        aria-hidden={true}
-                        style={PHANTOM_STYLE}
-                    />,
-                );
-            }
         }
     }
 
@@ -177,6 +227,7 @@ export default function TypewriterItem({
     key,
     specialCharacters,
     delay = 10,
+    accumulateConsecutiveDelays = false,
 }: {
     children: unknown;
     className?: string;
@@ -191,15 +242,18 @@ export default function TypewriterItem({
     specialCharacters?: { [char: string]: SpecialCharacterOptions };
     /** Base delay in ms — needed to compute phantom span counts. */
     delay?: number;
+    /** @see MarkdownTypewriterProps.accumulateConsecutiveDelays */
+    accumulateConsecutiveDelays?: boolean;
 }) {
     if (typeof children === "string") {
         const chars = splitStringToCharactersAndEmoji(children);
+        const delayAfterMap = buildDelayAfterMap(chars, undefined, specialCharacters, accumulateConsecutiveDelays);
         const spanList = chars.flatMap((char, i) =>
             renderCharSpans(
                 char,
                 i,
                 String(key ?? ""),
-                chars[i + 1],
+                delayAfterMap[i],
                 characterVariants,
                 onCharacterAnimationComplete,
                 className,
@@ -213,32 +267,31 @@ export default function TypewriterItem({
         const list = childArray.map((child, childIdx) => {
             if (typeof child === "string") {
                 const chars = splitStringToCharactersAndEmoji(child);
-                return chars.flatMap((char, i) => {
-                    let nextChar: string | undefined;
-                    if (i < chars.length - 1) {
-                        nextChar = chars[i + 1];
-                    } else {
-                        // Last char of this string — check the immediate next sibling to detect
-                        // consecutive special characters across sibling boundaries.
-                        // A React element between strings acts as a boundary (nextChar stays undefined).
-                        const nextSibling = childArray[childIdx + 1];
-                        if (typeof nextSibling === "string") {
-                            const sibChars = splitStringToCharactersAndEmoji(nextSibling);
-                            nextChar = sibChars[0];
-                        }
+                // In default mode, pass the first char of the next string sibling so the
+                // consecutive-same rule works across sibling boundaries.
+                // In accumulate mode, cross-sibling accumulation is not performed.
+                let nextCharFromSibling: string | undefined;
+                if (!accumulateConsecutiveDelays) {
+                    const nextSibling = childArray[childIdx + 1];
+                    if (typeof nextSibling === "string") {
+                        const sibChars = splitStringToCharactersAndEmoji(nextSibling);
+                        nextCharFromSibling = sibChars[0];
                     }
-                    return renderCharSpans(
+                }
+                const delayAfterMap = buildDelayAfterMap(chars, nextCharFromSibling, specialCharacters, accumulateConsecutiveDelays);
+                return chars.flatMap((char, i) =>
+                    renderCharSpans(
                         char,
                         i,
                         `${key}-${childIdx}`,
-                        nextChar,
+                        delayAfterMap[i],
                         characterVariants,
                         onCharacterAnimationComplete,
                         className,
                         specialCharacters,
                         delay,
-                    );
-                });
+                    ),
+                );
             }
             return child as ReactElement;
         });

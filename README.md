@@ -111,6 +111,7 @@ In addition to the `react-markdown` component props, the component accepts the f
   * `characterVariants`: The motion variants for each individual letter. Default: `{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { opacity: { duration: 0 } } } }` (Optional).
   * `onCharacterAnimationComplete`: A callback that is called when the animation of a letter is complete. The callback is called with the reference to the letter. (Optional)
 * `specialCharacters`: Per-character animation overrides, useful for adding pauses after punctuation. Each key must be a **single character**. (Optional)
+* `accumulateConsecutiveDelays`: When `true`, any unbroken run of characters that each have a `delayAfter` configured is collapsed: all but the last are silenced, and the last fires with the **sum** of all delays in the run. Default: `false`. (Optional)
 
 ### specialCharacters
 
@@ -130,6 +131,16 @@ In addition to the `react-markdown` component props, the component accepts the f
 | `". . ."` | Each `.` gets its own delay | Each `.` triggers (space breaks the sequence) |
 
 The most common use case for punctuation pauses is `delayAfter`.
+
+#### `accumulateConsecutiveDelays`
+
+When `accumulateConsecutiveDelays={true}`, any unbroken run of characters that each have a `delayAfter` is treated as a single unit: all but the last are silenced, and the last fires with the **sum** of all delays in the run. A non-special character (or a React-element boundary) breaks the run.
+
+| Text | `false` (default) | `true` |
+| --- | --- | --- |
+| `"..."` (`.delayAfter=300`) | last `.` → 300 ms | last `.` → 900 ms |
+| `".!."` (`.`=300, `!`=500) | each fires its own | last `.` → 1 100 ms |
+| `". . ."` | each `.` fires (space breaks) | each `.` fires (space breaks) |
 
 #### Example
 

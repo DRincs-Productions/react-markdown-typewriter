@@ -11,6 +11,7 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
         motionProps = {},
         components: externalComponents,
         specialCharacters,
+        accumulateConsecutiveDelays,
         ...rest
     } = props;
     const { characterVariants, onCharacterAnimationComplete, ...restMotionProps } = motionProps;
@@ -19,6 +20,7 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
         characterVariants,
         onCharacterAnimationComplete,
         specialCharacters,
+        accumulateConsecutiveDelays,
     });
 
     const mergedComponents = useMemo(

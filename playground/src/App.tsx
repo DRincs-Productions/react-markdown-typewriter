@@ -22,36 +22,97 @@ const SPECIAL_CHARACTERS_MIXED: Record<string, { delay?: number; delayAfter?: nu
     "—": { delay: 400, delayAfter: 400 },
 };
 
-const cases = [
+const cases: {
+    label: string;
+    text: string;
+    specialCharacters?: Record<string, { delay?: number; delayAfter?: number }>;
+    accumulateConsecutiveDelays?: boolean;
+}[] = [
+    // ── baseline ────────────────────────────────────────────────────────────────
+    {
+        label: "Baseline (no specials)",
+        text: "Hello, world. How are you? I am fine! Let me tell you: it works.",
+    },
+    // ── delayAfter ──────────────────────────────────────────────────────────────
     {
         label: "Punctuation pauses",
         text: "Hello, world. How are you? I am fine! Let me tell you: it works.",
         specialCharacters: SPECIAL_CHARACTERS,
     },
     {
-        label: "Ellipsis — pause only at end",
-        text: "Wait... it is working! And this... is great.",
+        label: "Ellipsis — pause at end",
+        text: 'Wait... it is working! And "this..." is great.',
         specialCharacters: SPECIAL_CHARACTERS,
     },
     {
-        label: "Spaced dots — pause after each",
-        text: "Wait. Wait. Wait. Now!",
+        label: "Mixed ?! accumulate",
+        text: "Wait... are you sure?! Yes! And this... too?!",
+        specialCharacters: { ".": { delayAfter: 300 }, "?": { delayAfter: 400 }, "!": { delayAfter: 500 } },
+        accumulateConsecutiveDelays: true,
+    },
+    // ── delay (before) ──────────────────────────────────────────────────────────
+    {
+        label: "delay before char",
+        text: "One. Two. Three — go!",
+        specialCharacters: {
+            ".": { delayAfter: 300 },
+            "—": { delay: 600, delayAfter: 400 },
+            "!": { delayAfter: 500 },
+        },
+    },
+    // ── markdown styles ─────────────────────────────────────────────────────────
+    {
+        label: "Bold & italic",
+        text: "**Bold**, _italic_, and ~~strikethrough~~. Done!",
         specialCharacters: SPECIAL_CHARACTERS,
     },
     {
-        label: "No special chars (baseline)",
-        text: "Hello, world. How are you? I am fine! Let me tell you: it works.",
-        specialCharacters: undefined,
+        label: "Inline code & links",
+        text: "Call `doSomething()` and check the result. Is it `null`? Yes!",
+        specialCharacters: SPECIAL_CHARACTERS,
     },
     {
-        label: "Markdown",
-        text: "**Bold text**, _italic_. And `code`? Yes!",
+        label: "Heading + paragraph",
+        text: "## Hello world\n\nThis is a **typewriter** with _markdown_. Cool?",
         specialCharacters: SPECIAL_CHARACTERS,
     },
     {
         label: "delay + delayAfter + styled",
         text: "**Attenzione**: questo _messaggio_ è importante — leggilo *lentamente*, parola per parola. Capito?",
         specialCharacters: SPECIAL_CHARACTERS_MIXED,
+    },
+    // ── emoji ───────────────────────────────────────────────────────────────────
+    {
+        label: "Emoji only",
+        text: "Hello 😊 world 🌍! How are you 🤔? Great 🎉!",
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    {
+        label: "Multi-codepoint emoji",
+        text: "Flags: 🇮🇹 🇺🇸 🇯🇵. Family: 👨‍👩‍👧‍👦. Skin tone: 👋🏽. Done!",
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    {
+        label: "Emoji + markdown",
+        text: "**Ciao** 👋, _benvenuto_ 🎉! Questo è `cool` 😎. Funziona?",
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    // ── edge cases ──────────────────────────────────────────────────────────────
+    {
+        label: "Only specials in a row",
+        text: "Ready... set... go!!!",
+        specialCharacters: { ".": { delayAfter: 200 }, "!": { delayAfter: 400 } },
+    },
+    {
+        label: "Only specials — accumulate",
+        text: "Ready... set... go!!!",
+        specialCharacters: { ".": { delayAfter: 200 }, "!": { delayAfter: 400 } },
+        accumulateConsecutiveDelays: true,
+    },
+    {
+        label: "Unicode & accents",
+        text: "Héllo wörld! Ñoño? Ünïcödé... works.",
+        specialCharacters: SPECIAL_CHARACTERS,
     },
 ];
 
@@ -127,6 +188,7 @@ export default function App() {
                     key={key}
                     delay={DELAY}
                     specialCharacters={current.specialCharacters}
+                    accumulateConsecutiveDelays={current.accumulateConsecutiveDelays}
                 >
                     {current.text}
                 </MarkdownTypewriter>
@@ -143,7 +205,7 @@ export default function App() {
                     overflow: "auto",
                 }}
             >
-                {`delay=${DELAY}ms\nspecialCharacters=${JSON.stringify(current.specialCharacters ?? null, null, 2)}`}
+                {`delay=${DELAY}ms\naccumulateConsecutiveDelays=${current.accumulateConsecutiveDelays ?? false}\nspecialCharacters=${JSON.stringify(current.specialCharacters ?? null, null, 2)}`}
             </pre>
         </div>
     );

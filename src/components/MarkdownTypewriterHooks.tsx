@@ -11,6 +11,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         motionProps = {},
         components: externalComponents,
         specialCharacters,
+        accumulateConsecutiveDelays,
         ...rest
     } = props;
     const { characterVariants, onCharacterAnimationComplete, ...restMotionProps } = motionProps;
@@ -19,6 +20,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         characterVariants,
         onCharacterAnimationComplete,
         specialCharacters,
+        accumulateConsecutiveDelays,
     });
     const [animated, set] = useState<"hidden" | "visible">("hidden");
 
