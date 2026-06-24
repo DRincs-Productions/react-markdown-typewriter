@@ -11,33 +11,53 @@ const SPECIAL_CHARACTERS: Record<string, { delay?: number; delayAfter?: number }
     ":": { delayAfter: 250 },
 };
 
+const SPECIAL_CHARACTERS_MIXED: Record<string, { delay?: number; delayAfter?: number }> = {
+    ".": { delayAfter: 400 },
+    ",": { delayAfter: 200 },
+    "!": { delayAfter: 600 },
+    "?": { delayAfter: 500 },
+    // Long pause BEFORE the colon — the colon itself appears with a dramatic beat
+    ":": { delay: 500, delayAfter: 300 },
+    // Pause before and after the em dash — used as a dramatic separator
+    "—": { delay: 400, delayAfter: 400 },
+};
+
 const cases = [
     {
         label: "Punctuation pauses",
         text: "Hello, world. How are you? I am fine! Let me tell you: it works.",
+        specialCharacters: SPECIAL_CHARACTERS,
     },
     {
         label: "Ellipsis — pause only at end",
         text: "Wait... it is working! And this... is great.",
+        specialCharacters: SPECIAL_CHARACTERS,
     },
     {
         label: "Spaced dots — pause after each",
         text: "Wait. Wait. Wait. Now!",
+        specialCharacters: SPECIAL_CHARACTERS,
     },
     {
         label: "No special chars (baseline)",
         text: "Hello, world. How are you? I am fine! Let me tell you: it works.",
+        specialCharacters: undefined,
     },
     {
         label: "Markdown",
         text: "**Bold text**, _italic_. And `code`? Yes!",
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    {
+        label: "delay + delayAfter + styled",
+        text: "**Attenzione**: questo _messaggio_ è importante — leggilo *lentamente*, parola per parola. Capito?",
+        specialCharacters: SPECIAL_CHARACTERS_MIXED,
     },
 ];
 
 export default function App() {
     const [active, setActive] = useState(0);
     const [key, setKey] = useState(0);
-    const [useSpecial, setUseSpecial] = useState(true);
 
     const current = cases[active];
 
@@ -76,19 +96,7 @@ export default function App() {
                 ))}
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
-                <label style={{ fontSize: 13 }}>
-                    <input
-                        type="checkbox"
-                        checked={useSpecial}
-                        onChange={(e) => {
-                            setUseSpecial(e.target.checked);
-                            setKey((k) => k + 1);
-                        }}
-                        style={{ marginRight: 4 }}
-                    />
-                    specialCharacters enabled
-                </label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 <button
                     type="button"
                     onClick={() => setKey((k) => k + 1)}
@@ -118,7 +126,7 @@ export default function App() {
                 <MarkdownTypewriter
                     key={key}
                     delay={DELAY}
-                    specialCharacters={useSpecial ? SPECIAL_CHARACTERS : undefined}
+                    specialCharacters={current.specialCharacters}
                 >
                     {current.text}
                 </MarkdownTypewriter>
@@ -135,7 +143,7 @@ export default function App() {
                     overflow: "auto",
                 }}
             >
-                {`delay=${DELAY}ms\nspecialCharacters=${useSpecial ? JSON.stringify(SPECIAL_CHARACTERS, null, 2) : "undefined"}`}
+                {`delay=${DELAY}ms\nspecialCharacters=${JSON.stringify(current.specialCharacters ?? null, null, 2)}`}
             </pre>
         </div>
     );

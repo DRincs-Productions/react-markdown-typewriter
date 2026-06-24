@@ -102,7 +102,9 @@ function renderCharSpans(
     keyPrefix: string,
     nextChar: string | undefined,
     defaultCharacterVariants: Variants,
-    onCharacterAnimationComplete: ((letterRef: RefObject<HTMLSpanElement | null>) => void) | undefined,
+    onCharacterAnimationComplete:
+        | ((letterRef: RefObject<HTMLSpanElement | null>) => void)
+        | undefined,
     className: string | undefined,
     specialCharacters: { [char: string]: SpecialCharacterOptions } | undefined,
     baseDelay: number,
@@ -114,16 +116,15 @@ function renderCharSpans(
 
     const spans: ReactElement[] = [];
 
-    // `delay` — insert phantoms BEFORE the character. No consecutive rule.
+    // `delay` — insert phantom stagger-slot spans BEFORE the character so it appears
+    // after a custom wait. No consecutive rule: every occurrence gets its own override.
     if (baseDelay > 0 && specialConfig?.delay !== undefined) {
-        const phantomCount = Math.max(
-            0,
-            Math.round((specialConfig.delay - baseDelay) / baseDelay),
-        );
+        const extraMs = specialConfig.delay - baseDelay;
+        const phantomCount = Math.max(0, Math.round(extraMs / baseDelay));
         for (let p = 0; p < phantomCount; p++) {
             spans.push(
                 <motion.span
-                    key={`phantom-b-${keyPrefix}-${index}-${p}`}
+                    key={`phantom-b-${keyPrefix}-${char}-${index}-${p}`}
                     variants={PHANTOM_VARIANTS}
                     aria-hidden={true}
                     style={PHANTOM_STYLE}
@@ -142,7 +143,7 @@ function renderCharSpans(
         />,
     );
 
-    // `delayAfter` — insert phantoms AFTER the character.
+    // `delayAfter` — insert phantom stagger-slot spans AFTER the character.
     // Consecutive rule: skip when the very next char is the same special character.
     if (baseDelay > 0 && specialConfig?.delayAfter !== undefined) {
         const nextIsSameSpecial = nextChar === char;
