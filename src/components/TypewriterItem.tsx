@@ -88,7 +88,7 @@ function CharacterSpan({
  *
  * **Default mode** (`accumulate = false`):
  * Each special character fires its own `delayAfter` unless the immediately following
- * character is the same special character (consecutive-same rule). The optional
+ * character is also a special character (consecutive-any rule). The optional
  * `nextCharFromSibling` handles the cross-sibling boundary for the last char.
  *
  * **Accumulate mode** (`accumulate = true`):
@@ -128,12 +128,12 @@ function buildDelayAfterMap(
         return result;
     }
 
-    // Default: fire unless the immediately following char is the same special char.
+    // Default: fire unless the immediately following char is also a special character.
     return chars.map((char, i) => {
         const delay = specialCharacters[char]?.delayAfter;
         if (delay === undefined) return undefined;
         const next = i < chars.length - 1 ? chars[i + 1] : nextCharFromSibling;
-        return next === char ? undefined : delay;
+        return next !== undefined && specialCharacters[next]?.delayAfter !== undefined ? undefined : delay;
     });
 }
 

@@ -45,6 +45,11 @@ const cases: {
         specialCharacters: SPECIAL_CHARACTERS,
     },
     {
+        label: "Mixed ?!? — single pause",
+        text: "Really?!? Wow... Are you sure?! Yes!",
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    {
         label: "Mixed ?! accumulate",
         text: "Wait... are you sure?! Yes! And this... too?!",
         specialCharacters: { ".": { delayAfter: 300 }, "?": { delayAfter: 400 }, "!": { delayAfter: 500 } },

@@ -37,8 +37,8 @@ export interface SpecialCharacterOptions {
     /**
      * Inserts a pause *after* this character before the next one appears.
      *
-     * **Consecutive rule applies**: in `"..."` only the LAST `.` triggers the pause;
-     * in `". . ."` each `.` triggers its own pause (a space breaks the sequence).
+     * **Consecutive rule applies**: in `"..."` only the LAST `.` triggers; in `"?!?"` only the last `?`
+     * triggers; in `". . ."` each `.` triggers (a space breaks the sequence).
      */
     delayAfter?: number;
     /**
@@ -65,12 +65,14 @@ interface TypewriterProps {
      * - **`delay`** — overrides how long the typewriter waits *before* this character appears.
      *   No consecutive rule: every occurrence gets its own override, including in `"..."`.
      * - **`delayAfter`** — inserts a pause *after* this character before the next one appears.
-     *   Consecutive rule: in `"..."` only the **last** `.` triggers; in `". . ."` each `.` triggers.
+     *   Consecutive rule: in `"..."` only the **last** `.` triggers; in `"?!?"` only the last `?` triggers;
+     *   in `". . ."` each `.` triggers (a space breaks the sequence).
      * - **`characterVariants`** — custom framer-motion variants for this character.
      *
      * @example
      * ```tsx
-     * // Pause after punctuation; "..." only pauses once (after the third dot).
+     * // Pause after punctuation; "..." pauses once (after the third dot);
+     * // "?!?" pauses once (after the last "?").
      * <MarkdownTypewriter
      *     specialCharacters={{
      *         ".": { delayAfter: 400 },
@@ -79,7 +81,7 @@ interface TypewriterProps {
      *         "?": { delayAfter: 500 },
      *     }}
      * >
-     *     Hello, world. How are you?
+     *     Hello, world. How are you?! Really?!? Wow...
      * </MarkdownTypewriter>
      * ```
      */
@@ -95,7 +97,7 @@ interface TypewriterProps {
      * | Text | `false` (default) | `true` |
      * |------|-------------------|--------|
      * | `"..."` (`.delayAfter=400`) | last `.` → 400 ms | last `.` → 1 200 ms |
-     * | `".!."` (`.`=400, `!`=500) | each fires its own | last `.` → 1 300 ms |
+     * | `".!."` (`.`=400, `!`=500) | last `.` → 400 ms | last `.` → 1 300 ms |
      * | `". . ."` | each `.` fires (space breaks) | each `.` fires (space breaks) |
      *
      * @default false
