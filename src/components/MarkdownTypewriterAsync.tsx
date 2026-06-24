@@ -34,12 +34,10 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
         [text],
     );
 
-    if (delay === 0) {
-        return await MarkdownAsync({
-            ...rest,
-            components: externalComponents,
-            children: text,
-        });
+    if (delay <= 0) {
+        console.warn(
+            "MarkdownTypewriterAsync: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard react-markdown MarkdownAsync component instead.",
+        );
     }
 
     const markdown = await MarkdownAsync({

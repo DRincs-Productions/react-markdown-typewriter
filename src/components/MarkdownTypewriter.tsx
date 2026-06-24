@@ -34,11 +34,9 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
         [text],
     );
 
-    if (delay === 0) {
-        return (
-            <Markdown {...rest} components={externalComponents}>
-                {text}
-            </Markdown>
+    if (delay <= 0) {
+        console.warn(
+            "MarkdownTypewriter: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard react-markdown Markdown component instead.",
         );
     }
 
