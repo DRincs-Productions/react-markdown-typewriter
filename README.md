@@ -4,6 +4,8 @@ This library provides 2 new component, `MarkdownTypewriter` and `MarkdownTypewri
 
 Live demo: <https://codesandbox.io/p/sandbox/react-markdown-typewriter-rgjf6t>
 
+> The effect produced by this library closely resembles the streaming text animation used by AI chat interfaces such as **ChatGPT**, **Claude**, **Gemini**, and similar tools — where responses appear character by character as they are generated. If you are building an AI-powered chat UI or any application that streams text to the user, this library gives you that familiar, polished look with full Markdown support out of the box.
+
 ## Why?
 
 This library was born during the development of my game engine [pixi-vn](https://www.npmjs.com/package/@drincs/pixi-vn). I needed a component that would display the current dialogue of a character with the "Typewriter" effect and I also wanted to give the developer the possibility to use Markdown to add style to the text.
