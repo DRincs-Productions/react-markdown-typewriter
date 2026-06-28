@@ -42,6 +42,10 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
         );
     }
 
+    if (!text) {
+        return <span />;
+    }
+
     return (
         <motion.span
             key={key}

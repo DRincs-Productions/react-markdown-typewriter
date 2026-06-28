@@ -42,6 +42,10 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
         );
     }
 
+    if (!text) {
+        return <span />;
+    }
+
     const markdown = await MarkdownAsync({
         ...rest,
         components: mergedComponents,
