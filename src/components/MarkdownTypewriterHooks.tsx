@@ -1,7 +1,7 @@
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterHooksProps } from "@/interfaces";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MarkdownHooks } from "react-markdown";
 
 export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksProps) {
@@ -23,6 +23,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         accumulateConsecutiveDelays,
     });
     const [animated, set] = useState<"hidden" | "visible">("hidden");
+    const containerRef = useRef<HTMLSpanElement>(null);
 
     const mergedComponents = useMemo(
         () => ({
@@ -39,11 +40,30 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: text change triggers animation reset
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
+        const node = containerRef.current;
+        if (!node) {
+            return;
+        }
+
+        // MarkdownHooks mounts its tree asynchronously (it runs the unified processor in its
+        // own effect), so we can't flip to "visible" on a fixed timer - a slow environment
+        // (e.g. a cold/contended webview) can resolve that later than any fixed delay, which
+        // races the children mounting after we've already animated to "visible" and makes them
+        // pop in instantly instead of animating. Watch the DOM directly and reveal only once
+        // the real content has actually mounted.
+        if (node.childNodes.length > 0) {
             set("visible");
-        }, 10);
+            return () => set("hidden");
+        }
+
+        const observer = new MutationObserver(() => {
+            observer.disconnect();
+            set("visible");
+        });
+        observer.observe(node, { childList: true, subtree: true });
+
         return () => {
-            clearTimeout(timeoutId);
+            observer.disconnect();
             set("hidden");
         };
     }, [text]);
@@ -60,6 +80,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
 
     return (
         <motion.span
+            ref={containerRef}
             key={key}
             variants={sentenceVariants}
             initial="hidden"
