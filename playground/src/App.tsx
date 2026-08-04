@@ -1,7 +1,95 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MarkdownTypewriter } from "react-markdown-typewriter";
 
 const DELAY = 30;
+
+// Reported as causing a significant performance issue (~2700 chars, many headings/paragraphs).
+// See https://github.com/DRincs-Productions/react-markdown-typewriter/issues - large real-world
+// markdown documents (e.g. course/subject listings) keep thousands of per-character motion
+// components alive simultaneously for the whole (very long) reveal sequence.
+const LARGE_DOCUMENT = `## Lorem ipsum
+### 📚 Mathematics & Statistics 101
+Mathematics and Statistics 1.2 - Use mathematical methods to explore problems that relate to life in Aotearoa New Zealand or the Pacific
+Level 1, Internal,
+Credits: 5
+
+Mathematics and Statistics 1.3 - Interpret and apply mathematical and statistical information in context
+Level 1, External,
+Credits: 5
+
+Mathematics and Statistics 1.4 - Demonstrate mathematical reasoning
+Level 1, External,
+Credits: 5
+
+### 📚 Science 101
+Chemistry and Biology 1.2 - Demonstrate understanding of chemical reactions in context
+Level 1, Internal,
+Credits: 6
+
+Chemistry and Biology 1.3 - Demonstrate understanding of genetic variation in relation to an identified characteristic
+Level 1, External,
+Credits: 5
+
+Physics, Earth and Space Science 1.2 - Demonstrate understanding of a physical phenomenon through investigation
+Level 1, Internal,
+Credits: 5
+
+### 📚 English 101
+English 1.3 - Demonstrate understanding of specific aspects of studied text
+Level 1, External,
+Credits: 5
+
+English 1.2 - Develop ideas in writing using stylistic and written conventions
+Level 1, Internal,
+Credits: 5
+
+English 1.4 - Demonstrate understanding of significant aspects of unfamiliar texts
+Level 1, External,
+Credits: 5
+
+### 📚 Spanish 101
+Spanish 1.2 - Communicate in Spanish for a chosen purpose
+Level 1, Internal,
+Credits: 5
+
+Spanish 1.3 - Demonstrate understanding of written Spanish related to everyday contexts
+Level 1, External,
+Credits: 5
+
+Spanish 1.4 - Demonstrate understanding of spoken Spanish related to everyday contexts
+Level 1, External,
+Credits: 5
+
+### 📚 Practical Art 101
+Visual Arts 1.2 - Produce a significant resolved artwork appropriate to established art making conventions
+Level 1, Internal,
+Credits: 5
+
+Visual Arts 1.3 - Explore Visual Arts processes and conventions to inform own art making
+Level 1, External,
+Credits: 5
+
+Visual Arts 1.4 - Create a sustained body of related artworks in response to an art making proposition
+Level 1, External,
+Credits: 5
+
+### 📚 Multi-Materials Technology 101
+Materials and Processing Technology 1.1 - Develop a Materials and Processing Technology outcome in an authentic context
+Level 1, Internal,
+Credits: 6
+
+Materials and Processing Technology 1.2 - Experiment with different materials to develop a Materials and Processing Technology outcome
+Level 1, Internal,
+Credits: 6
+
+Materials and Processing Technology 1.3 - Demonstrate understanding of sustainable practices in the development of a Materials and Processing Technology design
+Level 1, External,
+Credits: 4
+
+| **Total Credits** | **L1 Literacy Credits** | **UE Literacy Credits** | **Numeracy Credits** |
+|---:|---:|---:|---:|
+| **92** | **20** | **** | **15** |
+`;
 
 const SPECIAL_CHARACTERS: Record<string, { delay?: number; delayAfter?: number }> = {
     ".": { delayAfter: 400 },
@@ -119,13 +207,43 @@ const cases: {
         text: "Héllo wörld! Ñoño? Ünïcödé... works.",
         specialCharacters: SPECIAL_CHARACTERS,
     },
+    // ── perf regression repro ───────────────────────────────────────────────────
+    {
+        label: "Perf: large document",
+        text: LARGE_DOCUMENT,
+    },
+    {
+        label: "Cross-block order (plain)",
+        text: "AAAAAAAAAA\n\nBBBBBBBBBB",
+    },
 ];
 
 export default function App() {
     const [active, setActive] = useState(0);
     const [key, setKey] = useState(0);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [stats, setStats] = useState({ live: 0, settled: 0 });
 
     const current = cases[active];
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            const node = containerRef.current;
+            if (!node) return;
+            const spans = node.querySelectorAll("span");
+            let live = 0;
+            let settled = 0;
+            spans.forEach((span) => {
+                if (span.hasAttribute("style")) {
+                    live++;
+                } else {
+                    settled++;
+                }
+            });
+            setStats({ live, settled });
+        }, 200);
+        return () => clearInterval(id);
+    }, []);
 
     return (
         <div
@@ -178,7 +296,13 @@ export default function App() {
                 </button>
             </div>
 
+            <div style={{ display: "flex", gap: 16, marginBottom: 8, fontSize: 13, color: "#666" }}>
+                <span>live motion spans: {stats.live}</span>
+                <span>settled (static) spans: {stats.settled}</span>
+            </div>
+
             <div
+                ref={containerRef}
                 style={{
                     border: "1px solid #e0e0e0",
                     borderRadius: 8,
