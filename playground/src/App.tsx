@@ -332,6 +332,19 @@ const cases: {
         label: "Fixed: plain → inline code",
         text: "Plain paragraph goes here first.\n\nCall `doSomething()` inline code follows.",
     },
+    // A standalone embedded element with NO text of its own (e.g. an image alone in its own
+    // paragraph, nothing else on the line) has nothing that could independently claim a slot on
+    // the shared reveal timeline the way a self-driven string does - unlike "Fixed: plain →
+    // image" above, where the image shares its paragraph with trailing text and so goes through
+    // the array branch's existing DelayedOldMechanismBlock gate. A BARE image/link hit
+    // TypewriterItem's final "single non-string, non-array child" fallback instead, which used to
+    // skip gating entirely - inheriting "visible" straight from the document's top-level wrapper
+    // and popping in almost immediately regardless of its position in the document. Fixed by
+    // giving that fallback branch the same DelayedOldMechanismBlock gate (reserving one slot).
+    {
+        label: "Fixed: plain → solo image",
+        text: "Heading paragraph first, lots of text so it takes a while to reveal fully before the image.\n\n![Image](start)",
+    },
     {
         label: "OK: table ↔ plain",
         text: "| A | B |\n|---|---|\n| 1 | 2 |\n\nPlain paragraph after table here.",

@@ -1,4 +1,8 @@
-import { AncestorPropagationProvider, useAncestorPropagation, useRevealSlot } from "@/functions/revealSlots";
+import {
+    AncestorPropagationProvider,
+    useAncestorPropagation,
+    useRevealSlot,
+} from "@/functions/revealSlots";
 import type { SpecialCharacterOptions } from "@/interfaces/MarkdownTypewriterProps";
 import emojiRegex from "emoji-regex";
 import { motion, type Variants } from "motion/react";
@@ -210,7 +214,9 @@ function buildDelayAfterMap(
         const delay = specialCharacters[char]?.delayAfter;
         if (delay === undefined) return undefined;
         const next = i < chars.length - 1 ? chars[i + 1] : nextCharFromSibling;
-        return next !== undefined && specialCharacters[next]?.delayAfter !== undefined ? undefined : delay;
+        return next !== undefined && specialCharacters[next]?.delayAfter !== undefined
+            ? undefined
+            : delay;
     });
 }
 
@@ -279,10 +285,7 @@ function renderCharSpans(
     // `delayAfter` — insert phantom stagger-slot spans AFTER the character.
     // The effective value is pre-computed by buildDelayAfterMap.
     if (baseDelay > 0 && effectiveDelayAfter !== undefined) {
-        const phantomCount = Math.max(
-            0,
-            Math.round((effectiveDelayAfter - baseDelay) / baseDelay),
-        );
+        const phantomCount = Math.max(0, Math.round((effectiveDelayAfter - baseDelay) / baseDelay));
         for (let p = 0; p < phantomCount; p++) {
             spans.push(
                 <motion.span
@@ -374,7 +377,9 @@ const CharacterChunk = memo(function CharacterChunk({
                     key={`span-${keyPrefix}-${char}-${startIndex + i}`}
                     char={char}
                     className={className}
-                    characterVariants={specialCharacters?.[char]?.characterVariants ?? characterVariants}
+                    characterVariants={
+                        specialCharacters?.[char]?.characterVariants ?? characterVariants
+                    }
                     onCharacterAnimationComplete={onCharacterAnimationComplete}
                     active={i < chunkRevealedCount}
                 />
@@ -471,7 +476,10 @@ function SelfDrivenCharSpans({
                     key={`chunk-${keyPrefix}-${chunk.startIndex}`}
                     chars={chunk.chars}
                     startIndex={chunk.startIndex}
-                    chunkRevealedCount={Math.min(Math.max(revealedCount - chunk.startIndex, 0), chunk.chars.length)}
+                    chunkRevealedCount={Math.min(
+                        Math.max(revealedCount - chunk.startIndex, 0),
+                        chunk.chars.length,
+                    )}
                     keyPrefix={keyPrefix}
                     characterVariants={characterVariants}
                     onCharacterAnimationComplete={onCharacterAnimationComplete}
@@ -581,6 +589,7 @@ export default function TypewriterItem({
     specialCharacters,
     delay = 10,
     accumulateConsecutiveDelays = false,
+    disableSoloElementGate = false,
 }: {
     children: unknown;
     className?: string;
@@ -597,6 +606,16 @@ export default function TypewriterItem({
     delay?: number;
     /** @see MarkdownTypewriterProps.accumulateConsecutiveDelays */
     accumulateConsecutiveDelays?: boolean;
+    /**
+     * Skips gating a lone non-string, non-array child (see the bottom of this function) for
+     * purely structural table containers (`thead`/`tbody`/`tfoot` with a single `tr`) - unlike
+     * `td`/`th`/most other tags, these can never validly contain a wrapping `<span>` as their
+     * direct child (a browser will reparent/strip it, corrupting the table), and since they
+     * render no text of their own, skipping the gate doesn't reintroduce any user-visible
+     * premature reveal - their cells are already independently gated by `td`/`th`'s own
+     * `TypewriterItem` call.
+     */
+    disableSoloElementGate?: boolean;
 }) {
     // A nested inline element (e.g. `**bold**`/`_italic_`/`~~strikethrough~~`) inside a mixed
     // text+element paragraph has a plain string as ITS OWN children, so it would otherwise
@@ -608,7 +627,12 @@ export default function TypewriterItem({
 
     if (typeof children === "string") {
         const chars = splitStringToCharactersAndEmoji(children);
-        const delayAfterMap = buildDelayAfterMap(chars, undefined, specialCharacters, accumulateConsecutiveDelays);
+        const delayAfterMap = buildDelayAfterMap(
+            chars,
+            undefined,
+            specialCharacters,
+            accumulateConsecutiveDelays,
+        );
         if (useOldMechanism) {
             return dadElement(
                 chars.flatMap((char, i) =>
@@ -657,7 +681,12 @@ export default function TypewriterItem({
                         nextCharFromSibling = sibChars[0];
                     }
                 }
-                const delayAfterMap = buildDelayAfterMap(chars, nextCharFromSibling, specialCharacters, accumulateConsecutiveDelays);
+                const delayAfterMap = buildDelayAfterMap(
+                    chars,
+                    nextCharFromSibling,
+                    specialCharacters,
+                    accumulateConsecutiveDelays,
+                );
                 return chars.flatMap((char, i) =>
                     renderCharSpans(
                         char,
@@ -675,7 +704,9 @@ export default function TypewriterItem({
             return child as ReactElement;
         });
         const content = (
-            <AncestorPropagationProvider>{dadElement(list as ReactElement[], false)}</AncestorPropagationProvider>
+            <AncestorPropagationProvider>
+                {dadElement(list as ReactElement[], false)}
+            </AncestorPropagationProvider>
         );
         if (useOldMechanism) {
             return content;
@@ -689,5 +720,34 @@ export default function TypewriterItem({
             </DelayedOldMechanismBlock>
         );
     }
-    return dadElement(children as ReactElement, true);
+    // A single embedded element with no text of its own (e.g. a standalone `![image](url)` or
+    // `[![alt](img)](link)` alone in its own paragraph, with no surrounding text) has nothing that
+    // could independently claim a slot on the shared reveal-slot timeline the way a self-driven
+    // string does - it only inherits "hidden"/"visible" from whichever ancestor actually animates.
+    // Without a gate here, that ancestor ends up being the document's own top-level wrapper (mount
+    // time), so it reveals immediately regardless of its position in the document - the same
+    // premature-reveal failure mode the array branch above already fixes for MIXED text+element
+    // paragraphs, just for the "no text at all" case. Reuse the same DelayedOldMechanismBlock gate,
+    // reserving exactly one slot (matching how estimateArrayBlockDurationMs counts a bare embedded
+    // element). Skipped when already nested inside a gated mixed paragraph (useOldMechanism), to
+    // avoid claiming a second slot for content that's already correctly sequenced, or when the
+    // caller opted out (disableSoloElementGate - see its own doc comment).
+    //
+    // Gate the CHILD, then hand the gated result to dadElement - not the other way around. Most
+    // callers' dadElement renders the tag's own real DOM element around whatever it's given (e.g.
+    // `<td>`/`<th>`/`strong`/`em`/`li`/...), so gating afterwards would wrap that real element in
+    // an extra `<span>` from OUTSIDE it - invalid when the parent context requires a specific
+    // child tag (a `<span>` around a `<td>` breaks the table). Gating first keeps the `<span>`
+    // INSIDE the real tag, which is always valid there. `dadElement`'s few implementations that
+    // render no tag of their own (the "p" case) still end up with the gate as their only wrapper,
+    // same as before.
+    if (useOldMechanism || disableSoloElementGate) {
+        return dadElement(children as ReactElement, true);
+    }
+    return dadElement(
+        <DelayedOldMechanismBlock estimatedDurationMs={delay} baseDelay={delay}>
+            {children as ReactElement}
+        </DelayedOldMechanismBlock>,
+        true,
+    );
 }

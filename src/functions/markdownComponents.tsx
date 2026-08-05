@@ -147,6 +147,16 @@ export default function markdownComponents({
                                     specialCharacters={specialCharacters}
                                     accumulateConsecutiveDelays={accumulateConsecutiveDelays}
                                     delay={delay}
+                                    // thead/tbody/tfoot are pure structural containers (their
+                                    // direct children must be <tr>, nothing else fits validly) -
+                                    // gating a lone <tr> would insert a <span> where only a <tr>
+                                    // is allowed, corrupting the table. They render no text of
+                                    // their own, so skipping the gate here doesn't reintroduce any
+                                    // visible premature reveal - each cell is already gated
+                                    // independently by the td/th case's own TypewriterItem call.
+                                    disableSoloElementGate={
+                                        tag === "thead" || tag === "tbody" || tag === "tfoot"
+                                    }
                                     dadElement={(children, isString) => {
                                         return (
                                             <MotionComponent
