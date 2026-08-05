@@ -1,4 +1,4 @@
-import { type ReactNode, createContext, useContext, useRef } from "react";
+import { type ReactNode, createContext, useContext, useMemo } from "react";
 
 /**
  * Coordinates cross-block reveal timing (e.g. heading -> paragraph -> next heading) for the
@@ -18,26 +18,61 @@ import { type ReactNode, createContext, useContext, useRef } from "react";
 interface RevealSlotAPI {
     claim: (durationMs: number) => number;
     release: (durationMs: number) => void;
+    /** Current cursor value (ms) - the predicted end time of every block claimed so far. Once
+     * every top-level block has claimed its slice within the same commit, this is the whole
+     * document's predicted total reveal duration (see `useRevealSlotApi`'s doc comment). */
+    peek: () => number;
 }
 
 const RevealSlotContext = createContext<RevealSlotAPI | null>(null);
 
-export function RevealSlotProvider({ children }: { children: ReactNode }) {
-    const cursorRef = useRef(0);
-    const apiRef = useRef<RevealSlotAPI | null>(null);
-    if (!apiRef.current) {
-        apiRef.current = {
-            claim: (durationMs: number) => {
-                const start = cursorRef.current;
-                cursorRef.current += durationMs;
-                return start;
-            },
-            release: (durationMs: number) => {
-                cursorRef.current -= durationMs;
-            },
-        };
-    }
-    return <RevealSlotContext.Provider value={apiRef.current}>{children}</RevealSlotContext.Provider>;
+function createRevealSlotApi(): RevealSlotAPI {
+    let cursor = 0;
+    return {
+        claim: (durationMs: number) => {
+            const start = cursor;
+            cursor += durationMs;
+            return start;
+        },
+        release: (durationMs: number) => {
+            cursor -= durationMs;
+        },
+        peek: () => cursor,
+    };
+}
+
+/**
+ * Creates the claim/release/peek API backing a `RevealSlotProvider`. Exposed as its own hook so a
+ * top-level component (e.g. `MarkdownTypewriterHooks`) can hold the SAME api object it hands to
+ * the provider, and read `peek()` itself once every block has mounted - rather than only being
+ * able to reach it as a context *consumer*, which its own subtree's Provider element can never
+ * make it one of.
+ *
+ * Pass the same `key` the caller already uses to force-remount its `RevealSlotProvider` on new
+ * text (e.g. `MarkdownTypewriterHooks`'s own `key`). Without it, the returned api - and so its
+ * cursor - would live for the component's whole lifetime instead of resetting per text, since
+ * (unlike the provider itself) this hook's owner doesn't remount when only its `children` prop
+ * changes.
+ */
+export function useRevealSlotApi(key?: string): RevealSlotAPI {
+    // biome-ignore lint/correctness/useExhaustiveDependencies: key is the reset trigger, not a value read inside the factory
+    return useMemo(() => createRevealSlotApi(), [key]);
+}
+
+export function RevealSlotProvider({
+    children,
+    api: externalApi,
+}: {
+    children: ReactNode;
+    /** Reuse a caller-owned api (see `useRevealSlotApi`) instead of creating a new one. */
+    api?: RevealSlotAPI;
+}) {
+    const ownApi = useRevealSlotApi();
+    return (
+        <RevealSlotContext.Provider value={externalApi ?? ownApi}>
+            {children}
+        </RevealSlotContext.Provider>
+    );
 }
 
 /** Returns `null` when rendered outside a `RevealSlotProvider` - callers should fall back to
@@ -67,7 +102,9 @@ const AncestorPropagationContext = createContext(false);
 
 export function AncestorPropagationProvider({ children }: { children: ReactNode }) {
     return (
-        <AncestorPropagationContext.Provider value={true}>{children}</AncestorPropagationContext.Provider>
+        <AncestorPropagationContext.Provider value={true}>
+            {children}
+        </AncestorPropagationContext.Provider>
     );
 }
 
