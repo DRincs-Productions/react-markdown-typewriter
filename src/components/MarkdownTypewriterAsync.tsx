@@ -1,3 +1,4 @@
+import { RevealSlotProvider } from "@/functions/revealSlots";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterProps } from "@/interfaces";
 import { motion } from "motion/react";
@@ -53,14 +54,10 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
     });
 
     return (
-        <motion.span
-            key={key}
-            variants={sentenceVariants}
-            initial="hidden"
-            animate={"visible"}
-            {...restMotionProps}
-        >
-            {markdown}
-        </motion.span>
+        <RevealSlotProvider key={key}>
+            <motion.span variants={sentenceVariants} initial="hidden" animate={"visible"} {...restMotionProps}>
+                {markdown}
+            </motion.span>
+        </RevealSlotProvider>
     );
 }
