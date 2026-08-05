@@ -92,6 +92,73 @@ Credits: 4
 | **92** | **20** | **** | **15** |
 `;
 
+// Broad feature showcase covering most markdown constructs at once (headings, raw HTML with
+// inline styling, bold/italic/strikethrough, links, code (inline + fenced), lists/task lists,
+// a GFM table, and an image) - useful for eyeballing the reveal across many block types in one
+// pass rather than one narrow case per feature.
+const MARKDOWN_FEATURE_TEST = `# Markdown Test
+
+Hello 🖐️, this is a test of the markdown parser. Pixi'VN does not manage markdown, but you can implement a markdown parser to display text with markdown syntax.
+
+For example in React, you can use the library [react-markdown](https://www.npmjs.com/package/react-markdown).
+
+## Colored Text
+
+<span style="color:blue">some *blue* text</span>.
+
+<span style="color:red">some *red* text</span>.
+
+<span style="color:green">some *green* text</span>.
+
+## Bold Text
+
+**This is bold text.**
+
+## Italic Text
+
+*This is italic text.*
+
+## Delete Text
+
+~~This is deleted text.~~
+
+## Link Test
+
+[Link to Google](https://www.google.com)
+
+## H2 Test
+
+### H3 Test
+
+#### H4 Test
+
+## Code Test
+
+\`Hello World\`
+
+\`\`\`js
+console.log("Hello World")
+\`\`\`
+
+## List Test
+
+- Item 1
+
+- Item 2
+
+- [x] Item 3
+
+## Table Test
+
+| Header 1 | Header 2 |
+| -------- | -------- |
+| Cell 1   | Cell 2   |
+
+## Image Test
+
+![Image](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRkw_mXXQ9FJ9HgmW_B9QMv-gvOmndUaEI9SA&s)
+`;
+
 const SPECIAL_CHARACTERS: Record<string, { delay?: number; delayAfter?: number }> = {
     ".": { delayAfter: 400 },
     ",": { delayAfter: 150 },
@@ -141,7 +208,11 @@ const cases: {
     {
         label: "Mixed ?! accumulate",
         text: "Wait... are you sure?! Yes! And this... too?!",
-        specialCharacters: { ".": { delayAfter: 300 }, "?": { delayAfter: 400 }, "!": { delayAfter: 500 } },
+        specialCharacters: {
+            ".": { delayAfter: 300 },
+            "?": { delayAfter: 400 },
+            "!": { delayAfter: 500 },
+        },
         accumulateConsecutiveDelays: true,
     },
     // ── delay (before) ──────────────────────────────────────────────────────────
@@ -263,6 +334,11 @@ const cases: {
     {
         label: "OK: table ↔ plain",
         text: "| A | B |\n|---|---|\n| 1 | 2 |\n\nPlain paragraph after table here.",
+    },
+    // ── comprehensive feature showcase ────────────────────────────────────────────
+    {
+        label: "Full markdown feature test",
+        text: MARKDOWN_FEATURE_TEST,
     },
 ];
 
