@@ -217,6 +217,44 @@ const cases: {
         label: "Cross-block order (plain)",
         text: "AAAAAAAAAA\n\nBBBBBBBBBB",
     },
+    {
+        label: "Table only",
+        text: "| A | B |\n|---|---|\n| **1** | 2 |",
+    },
+    // ── known bug: self-driven/old-mechanism block adjacency ─────────────────────
+    // A plain-text block (heading or paragraph with no embedded formatting) reveals via the
+    // self-driven scheduler and claims its own slice of the shared cross-block timeline. A
+    // "mixed" block (containing **bold**/_italic_/a link/an image/inline code - anything that
+    // gives it non-string children) still reveals via the older ancestor-propagated
+    // `staggerChildren` mechanism, which doesn't see self-driven blocks in its implicit sibling
+    // count. Whichever direction these two mechanisms are adjacent in, the second block starts
+    // revealing immediately instead of waiting for the first to finish. Three attempted fixes
+    // (delayed mount, corrected `transition.delayChildren`, a state-flip gate matching
+    // MarkdownTypewriterHooks' own pattern) all failed to correctly gate old-mechanism content
+    // without breaking something else - see conversation history. Table cells are NOT affected
+    // (they were made self-driven too, so they correctly participate in the shared timeline).
+    {
+        label: "Bug: mixed → plain",
+        text: "This is **bold** text here.\n\nPlain paragraph follows right after.",
+    },
+    {
+        label: "Bug: plain → link",
+        text: "Plain paragraph goes here first.\n\n[A link](start) paragraph follows.",
+    },
+    {
+        label: "Bug: plain → image",
+        text: "Plain paragraph goes here first.\n\n![alt](start) image paragraph follows.",
+    },
+    {
+        label: "Bug: plain → inline code",
+        text: "Plain paragraph goes here first.\n\nCall `doSomething()` inline code follows.",
+    },
+    // Verified NOT affected - table cells are self-driven, so they correctly wait their turn
+    // whether the table comes before or after a plain block.
+    {
+        label: "OK: table ↔ plain",
+        text: "| A | B |\n|---|---|\n| 1 | 2 |\n\nPlain paragraph after table here.",
+    },
 ];
 
 export default function App() {
