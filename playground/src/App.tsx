@@ -221,36 +221,45 @@ const cases: {
         label: "Table only",
         text: "| A | B |\n|---|---|\n| **1** | 2 |",
     },
-    // ── known bug: self-driven/old-mechanism block adjacency ─────────────────────
+    // ── regression: self-driven/old-mechanism block adjacency ────────────────────
     // A plain-text block (heading or paragraph with no embedded formatting) reveals via the
     // self-driven scheduler and claims its own slice of the shared cross-block timeline. A
     // "mixed" block (containing **bold**/_italic_/a link/an image/inline code - anything that
-    // gives it non-string children) still reveals via the older ancestor-propagated
-    // `staggerChildren` mechanism, which doesn't see self-driven blocks in its implicit sibling
-    // count. Whichever direction these two mechanisms are adjacent in, the second block starts
-    // revealing immediately instead of waiting for the first to finish. Three attempted fixes
-    // (delayed mount, corrected `transition.delayChildren`, a state-flip gate matching
-    // MarkdownTypewriterHooks' own pattern) all failed to correctly gate old-mechanism content
-    // without breaking something else - see conversation history. Table cells are NOT affected
-    // (they were made self-driven too, so they correctly participate in the shared timeline).
+    // gives it non-string children) reveals via the older ancestor-propagated `staggerChildren`
+    // mechanism, which doesn't see self-driven blocks in its implicit sibling count - so whichever
+    // direction these two mechanisms were adjacent in, the second block used to start revealing
+    // immediately instead of waiting for the first to finish.
+    //
+    // Root cause: `CharacterSpan` unconditionally attached an `onAnimationComplete` handler (for
+    // the "settle to a plain span" perf optimization) even to old-mechanism characters that rely
+    // purely on INHERITING "hidden"/"visible" from an ancestor - and Framer Motion resolves such a
+    // component immediately instead of waiting for the ancestor's future transition whenever ANY
+    // onAnimationComplete handler is attached to a variants-only (no own initial/animate)
+    // component. Fixed by only attaching that handler unconditionally for self-driven characters
+    // (which have their own explicit initial/animate and aren't affected); old-mechanism
+    // characters only get one if the caller actually asked for per-character notifications,
+    // matching the pre-optimization behavior. `DelayedOldMechanismBlock` (which claims a slice of
+    // the shared timeline and gates a mixed block's own reveal start on it, without delaying its
+    // mount) then works correctly. A ~1-2 character boundary overlap can still occur when the
+    // preceding block ends in a nested self-driven run (e.g. `**bold**`) longer than the fixed
+    // "1 slot" estimate used to reserve time for it - a minor imprecision, not the full desync
+    // these cases originally caught.
     {
-        label: "Bug: mixed → plain",
+        label: "Fixed: mixed → plain",
         text: "This is **bold** text here.\n\nPlain paragraph follows right after.",
     },
     {
-        label: "Bug: plain → link",
+        label: "Fixed: plain → link",
         text: "Plain paragraph goes here first.\n\n[A link](start) paragraph follows.",
     },
     {
-        label: "Bug: plain → image",
+        label: "Fixed: plain → image",
         text: "Plain paragraph goes here first.\n\n![alt](start) image paragraph follows.",
     },
     {
-        label: "Bug: plain → inline code",
+        label: "Fixed: plain → inline code",
         text: "Plain paragraph goes here first.\n\nCall `doSomething()` inline code follows.",
     },
-    // Verified NOT affected - table cells are self-driven, so they correctly wait their turn
-    // whether the table comes before or after a plain block.
     {
         label: "OK: table ↔ plain",
         text: "| A | B |\n|---|---|\n| 1 | 2 |\n\nPlain paragraph after table here.",

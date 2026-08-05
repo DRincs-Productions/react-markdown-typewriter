@@ -6,6 +6,7 @@ import {
     type Key,
     memo,
     type ReactElement,
+    type ReactNode,
     type RefObject,
     useLayoutEffect,
     useMemo,
@@ -105,7 +106,21 @@ const CharacterSpan = memo(function CharacterSpan({
     const ref = useRef<HTMLSpanElement>(null);
     const [settled, setSettled] = useState(false);
 
+    // Self-driven characters (active !== undefined) have their own explicit initial/animate, so
+    // it's safe to always attach a handler here to demote them to a plain span once their reveal
+    // finishes. Old-mechanism characters (active === undefined) instead rely on INHERITING
+    // "hidden"/"visible" from an ancestor that may not have transitioned yet - and Framer Motion
+    // resolves such a component's animation immediately, skipping the wait for that future
+    // transition, whenever ANY onAnimationComplete handler is present (confirmed via isolated
+    // testing: removing the handler entirely was the only thing that fixed it). So for these,
+    // only attach a handler when the caller actually asked for per-character notifications
+    // (matching the original, pre-"settle" behavior), and never attempt to settle them.
     const onAnimationComplete = useMemo(() => {
+        if (active === undefined) {
+            return onCharacterAnimationComplete
+                ? throttle(() => onCharacterAnimationComplete(ref), 10)
+                : undefined;
+        }
         const notifyCaller = onCharacterAnimationComplete
             ? throttle(() => onCharacterAnimationComplete(ref), 10)
             : undefined;
@@ -113,7 +128,7 @@ const CharacterSpan = memo(function CharacterSpan({
             setSettled(true);
             notifyCaller?.();
         };
-    }, [onCharacterAnimationComplete]);
+    }, [onCharacterAnimationComplete, active]);
 
     if (active === false) {
         return (
@@ -468,6 +483,94 @@ function SelfDrivenCharSpans({
     );
 }
 
+/**
+ * Roughly estimates how long a mixed text+element block's own (old-mechanism) reveal will take,
+ * in the same "one slot per character/embedded element, `baseDelay` ms per slot" units as
+ * `computeRevealSchedule` - just without replicating its exact special-character phantom-slot
+ * math (or accounting for a nested self-driven element's real character count), since this is
+ * only used to reserve a big-enough slice of the shared cross-block timeline (see
+ * `DelayedOldMechanismBlock`), not to drive the block's own internal timing. Treating an
+ * embedded element as exactly one slot can under-reserve by a character or two when it's a
+ * nested self-driven run (e.g. `**bold**`) longer than one slot's worth of time - a minor
+ * boundary overlap, not the full-block desync this mechanism otherwise fixes.
+ */
+function estimateArrayBlockDurationMs(childArray: unknown[], baseDelay: number): number {
+    let slots = 0;
+    for (const child of childArray) {
+        slots += typeof child === "string" ? splitStringToCharactersAndEmoji(child).length : 1;
+    }
+    return slots * baseDelay;
+}
+
+/**
+ * Delays the START of a mixed text+element block's own reveal to match its claimed slice of the
+ * shared cross-block timeline, without delaying when the block actually mounts - mounting stays
+ * immediate (matching everything else) specifically so descendants relying on inherited
+ * "hidden"/"visible" state (the old-mechanism characters underneath) still see a real, live
+ * ancestor to inherit from, rather than resolving against nothing and settling however Framer
+ * treats an absent inheritance source.
+ *
+ * `animate` starts equal to `initial` (both "hidden"), so nothing animates yet and there's no
+ * transition to prematurely resolve; only once a plain JS timer (matching the claimed offset)
+ * flips local state to "visible" does the transition begin - the same pattern
+ * `MarkdownTypewriterHooks` already uses for its own top-level gate.
+ *
+ * The actual bug that made an earlier version of this appear broken wasn't this gate at all: it
+ * was `CharacterSpan` unconditionally attaching an `onAnimationComplete` handler (added for the
+ * "settle to a plain span" perf optimization) even to old-mechanism characters that have no
+ * `initial`/`animate` of their own and rely purely on inheriting from an ancestor like this one.
+ * Confirmed via isolated testing: a `motion` component with variants-only (no own initial/
+ * animate) correctly inherits "hidden" from an ancestor still in that state - UNLESS it also has
+ * an `onAnimationComplete` handler attached, in which case Framer Motion resolves it to the
+ * target state immediately instead of waiting for the ancestor's future transition. See
+ * `CharacterSpan`'s own comment for the fix (only self-driven characters, which have their own
+ * explicit initial/animate, get an unconditional handler).
+ */
+function DelayedOldMechanismBlock({
+    estimatedDurationMs,
+    baseDelay,
+    children,
+}: {
+    estimatedDurationMs: number;
+    baseDelay: number;
+    children: ReactNode;
+}) {
+    const revealSlot = useRevealSlot();
+    const [animated, setAnimated] = useState<"hidden" | "visible">("hidden");
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies: claim must run exactly once per mount
+    useLayoutEffect(() => {
+        if (!revealSlot) {
+            setAnimated("visible");
+            return;
+        }
+        const start = revealSlot.claim(estimatedDurationMs);
+        if (start <= 0) {
+            setAnimated("visible");
+            return () => revealSlot.release(estimatedDurationMs);
+        }
+        const timeoutId = setTimeout(() => setAnimated("visible"), start);
+        return () => {
+            clearTimeout(timeoutId);
+            revealSlot.release(estimatedDurationMs);
+        };
+    }, []);
+
+    const variants = useMemo(
+        () => ({
+            hidden: {},
+            visible: { opacity: 1, transition: { staggerChildren: baseDelay / 1000 } },
+        }),
+        [baseDelay],
+    );
+
+    return (
+        <motion.span variants={variants} initial="hidden" animate={animated}>
+            {children}
+        </motion.span>
+    );
+}
+
 export default function TypewriterItem({
     children,
     className,
@@ -571,8 +674,19 @@ export default function TypewriterItem({
             }
             return child as ReactElement;
         });
-        return (
+        const content = (
             <AncestorPropagationProvider>{dadElement(list as ReactElement[], false)}</AncestorPropagationProvider>
+        );
+        if (useOldMechanism) {
+            return content;
+        }
+        return (
+            <DelayedOldMechanismBlock
+                estimatedDurationMs={estimateArrayBlockDurationMs(childArray, delay)}
+                baseDelay={delay}
+            >
+                {content}
+            </DelayedOldMechanismBlock>
         );
     }
     return dadElement(children as ReactElement, true);
