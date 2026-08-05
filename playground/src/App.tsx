@@ -241,7 +241,7 @@ export default function App() {
                 }
             });
             setStats({ live, settled });
-        }, 200);
+        }, 1000);
         return () => clearInterval(id);
     }, []);
 

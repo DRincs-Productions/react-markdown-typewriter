@@ -315,6 +315,59 @@ function computeRevealSchedule(
     return result;
 }
 
+// Characters per chunk for `SelfDrivenCharSpans`'s rendering (see `CharacterChunk`). Large
+// enough that the number of chunks (and so the per-frame memo-comparison overhead) stays small
+// for huge documents, small enough that the one chunk actively revealing doesn't itself become
+// an expensive re-render.
+const CHUNK_SIZE = 50;
+
+/**
+ * Renders one fixed-size slice of a block's characters. Memoized so that, on every
+ * `revealedCount` tick from the parent's rAF loop, only the ONE chunk whose `chunkRevealedCount`
+ * actually changed (the chunk currently at the "reveal edge") re-renders its characters - chunks
+ * that are already fully settled or not yet started see an unchanged `chunkRevealedCount` and
+ * bail out via `memo` instead of re-creating their (unchanging) character elements.
+ *
+ * Without this, `SelfDrivenCharSpans` re-creates all N character elements on every tick
+ * regardless of how many actually changed, which is what caused the very large document case to
+ * still show dropped frames even after the rAF batching fix - O(N) work per frame instead of
+ * O(chunk size).
+ */
+const CharacterChunk = memo(function CharacterChunk({
+    chars,
+    startIndex,
+    chunkRevealedCount,
+    keyPrefix,
+    characterVariants,
+    onCharacterAnimationComplete,
+    className,
+    specialCharacters,
+}: {
+    chars: string[];
+    startIndex: number;
+    chunkRevealedCount: number;
+    keyPrefix: string;
+    characterVariants: Variants;
+    onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
+    className?: string;
+    specialCharacters?: { [char: string]: SpecialCharacterOptions };
+}) {
+    return (
+        <>
+            {chars.map((char, i) => (
+                <CharacterSpan
+                    key={`span-${keyPrefix}-${char}-${startIndex + i}`}
+                    char={char}
+                    className={className}
+                    characterVariants={specialCharacters?.[char]?.characterVariants ?? characterVariants}
+                    onCharacterAnimationComplete={onCharacterAnimationComplete}
+                    active={i < chunkRevealedCount}
+                />
+            ))}
+        </>
+    );
+});
+
 /**
  * Renders the plain-string case's characters using the self-driven reveal schedule, claiming
  * this block's slice of the shared cross-block timeline (see `@/functions/revealSlots`) so
@@ -356,6 +409,17 @@ function SelfDrivenCharSpans({
     const totalDurationMs = (localSchedule.at(-1) ?? 0) + baseDelay;
     const [revealedCount, setRevealedCount] = useState(0);
 
+    // Sliced once (stable references) so unchanged chunks keep the SAME `chars` prop identity
+    // across renders - re-slicing on every revealedCount tick would give every chunk a new
+    // array reference each time and defeat `CharacterChunk`'s memoization entirely.
+    const chunks = useMemo(() => {
+        const result: { startIndex: number; chars: string[] }[] = [];
+        for (let start = 0; start < chars.length; start += CHUNK_SIZE) {
+            result.push({ startIndex: start, chars: chars.slice(start, start + CHUNK_SIZE) });
+        }
+        return result;
+    }, [chars]);
+
     // biome-ignore lint/correctness/useExhaustiveDependencies: claim + rAF loop must start exactly once per mount
     useLayoutEffect(() => {
         const start = revealSlot ? revealSlot.claim(totalDurationMs) : 0;
@@ -387,14 +451,17 @@ function SelfDrivenCharSpans({
 
     return (
         <>
-            {chars.map((char, i) => (
-                <CharacterSpan
-                    key={`span-${keyPrefix}-${char}-${i}`}
-                    char={char}
-                    className={className}
-                    characterVariants={specialCharacters?.[char]?.characterVariants ?? characterVariants}
+            {chunks.map((chunk) => (
+                <CharacterChunk
+                    key={`chunk-${keyPrefix}-${chunk.startIndex}`}
+                    chars={chunk.chars}
+                    startIndex={chunk.startIndex}
+                    chunkRevealedCount={Math.min(Math.max(revealedCount - chunk.startIndex, 0), chunk.chars.length)}
+                    keyPrefix={keyPrefix}
+                    characterVariants={characterVariants}
                     onCharacterAnimationComplete={onCharacterAnimationComplete}
-                    active={i < revealedCount}
+                    className={className}
+                    specialCharacters={specialCharacters}
                 />
             ))}
         </>
