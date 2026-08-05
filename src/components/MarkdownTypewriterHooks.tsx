@@ -1,3 +1,4 @@
+import { useRevealSlotApi, RevealSlotProvider } from "@/functions/revealSlots";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterHooksProps } from "@/interfaces";
 import { motion } from "motion/react";
@@ -14,7 +15,12 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         accumulateConsecutiveDelays,
         ...rest
     } = props;
-    const { characterVariants, onCharacterAnimationComplete, ...restMotionProps } = motionProps;
+    const {
+        characterVariants,
+        onCharacterAnimationComplete,
+        onAnimationComplete: userOnAnimationComplete,
+        ...restMotionProps
+    } = motionProps;
     const { sentenceVariants, components } = useTypewriterHook({
         delay,
         characterVariants,
@@ -24,6 +30,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
     });
     const [animated, set] = useState<"hidden" | "visible">("hidden");
     const containerRef = useRef<HTMLSpanElement>(null);
+    const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const mergedComponents = useMemo(
         () => ({
@@ -37,12 +44,35 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         () => `typewriter-${typeof text === "string" ? text.slice(0, 32) : ""}`,
         [text],
     );
+    const revealSlotApi = useRevealSlotApi(key);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: text change triggers animation reset
     useEffect(() => {
         const node = containerRef.current;
         if (!node) {
             return;
+        }
+
+        // Fires once the children behind this wrapper have actually mounted (and so already ran
+        // their own claim-time useLayoutEffects - see SelfDrivenCharSpans/DelayedOldMechanismBlock),
+        // which is why it's safe to peek() the reveal-slot timeline here: schedules the CALLER's
+        // onAnimationComplete off a plain timer matching the real predicted total reveal duration,
+        // instead of relying on Framer's onAnimationComplete on this wrapper span. That fires almost
+        // instantly regardless of staggerChildren, because the wrapper's own "visible" variant
+        // doesn't animate any real property of its own - it only configures timing for descendants -
+        // so Framer considers the wrapper's own transition "complete" right away (confirmed via
+        // isolated testing), which fired the caller's callback far too early (e.g. an app treating it
+        // as "typewriter reveal finished" would act on that immediately, well before the text/images/
+        // links actually finished revealing).
+        function reveal() {
+            set("visible");
+            if (userOnAnimationComplete) {
+                const totalMs = revealSlotApi.peek();
+                completionTimeoutRef.current = setTimeout(
+                    () => userOnAnimationComplete("visible"),
+                    totalMs,
+                );
+            }
         }
 
         // MarkdownHooks mounts its tree asynchronously (it runs the unified processor in its
@@ -52,19 +82,23 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         // pop in instantly instead of animating. Watch the DOM directly and reveal only once
         // the real content has actually mounted.
         if (node.childNodes.length > 0) {
-            set("visible");
-            return () => set("hidden");
+            reveal();
+            return () => {
+                set("hidden");
+                if (completionTimeoutRef.current) clearTimeout(completionTimeoutRef.current);
+            };
         }
 
         const observer = new MutationObserver(() => {
             observer.disconnect();
-            set("visible");
+            reveal();
         });
         observer.observe(node, { childList: true, subtree: true });
 
         return () => {
             observer.disconnect();
             set("hidden");
+            if (completionTimeoutRef.current) clearTimeout(completionTimeoutRef.current);
         };
     }, [text]);
 
@@ -79,17 +113,18 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
     }
 
     return (
-        <motion.span
-            ref={containerRef}
-            key={key}
-            variants={sentenceVariants}
-            initial="hidden"
-            animate={animated}
-            {...restMotionProps}
-        >
-            <MarkdownHooks {...rest} components={mergedComponents}>
-                {text}
-            </MarkdownHooks>
-        </motion.span>
+        <RevealSlotProvider key={key} api={revealSlotApi}>
+            <motion.span
+                ref={containerRef}
+                variants={sentenceVariants}
+                initial="hidden"
+                animate={animated}
+                {...restMotionProps}
+            >
+                <MarkdownHooks {...rest} components={mergedComponents}>
+                    {text}
+                </MarkdownHooks>
+            </motion.span>
+        </RevealSlotProvider>
     );
 }

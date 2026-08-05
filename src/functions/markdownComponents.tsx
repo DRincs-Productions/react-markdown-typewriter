@@ -61,10 +61,27 @@ export default function markdownComponents({
                                 </MotionComponent>
                             );
                         case "tr":
+                            return (
+                                <MotionComponent {...componentProps}>{children}</MotionComponent>
+                            );
                         case "th":
                         case "td":
                             return (
-                                <MotionComponent {...componentProps}>{children}</MotionComponent>
+                                <TypewriterItem
+                                    key={id}
+                                    characterVariants={characterVariants}
+                                    onCharacterAnimationComplete={onCharacterAnimationComplete}
+                                    specialCharacters={specialCharacters}
+                                    accumulateConsecutiveDelays={accumulateConsecutiveDelays}
+                                    delay={delay}
+                                    dadElement={(children) => (
+                                        <MotionComponent {...componentProps} key={`${tag}-${id}`}>
+                                            {children}
+                                        </MotionComponent>
+                                    )}
+                                >
+                                    {children}
+                                </TypewriterItem>
                             );
                         case "p":
                             return (

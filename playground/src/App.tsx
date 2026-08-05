@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MarkdownTypewriter } from "react-markdown-typewriter";
+import remarkGfm from "remark-gfm";
 
 const DELAY = 30;
 
@@ -216,6 +217,53 @@ const cases: {
         label: "Cross-block order (plain)",
         text: "AAAAAAAAAA\n\nBBBBBBBBBB",
     },
+    {
+        label: "Table only",
+        text: "| A | B |\n|---|---|\n| **1** | 2 |",
+    },
+    // ── regression: self-driven/old-mechanism block adjacency ────────────────────
+    // A plain-text block (heading or paragraph with no embedded formatting) reveals via the
+    // self-driven scheduler and claims its own slice of the shared cross-block timeline. A
+    // "mixed" block (containing **bold**/_italic_/a link/an image/inline code - anything that
+    // gives it non-string children) reveals via the older ancestor-propagated `staggerChildren`
+    // mechanism, which doesn't see self-driven blocks in its implicit sibling count - so whichever
+    // direction these two mechanisms were adjacent in, the second block used to start revealing
+    // immediately instead of waiting for the first to finish.
+    //
+    // Root cause: `CharacterSpan` unconditionally attached an `onAnimationComplete` handler (for
+    // the "settle to a plain span" perf optimization) even to old-mechanism characters that rely
+    // purely on INHERITING "hidden"/"visible" from an ancestor - and Framer Motion resolves such a
+    // component immediately instead of waiting for the ancestor's future transition whenever ANY
+    // onAnimationComplete handler is attached to a variants-only (no own initial/animate)
+    // component. Fixed by only attaching that handler unconditionally for self-driven characters
+    // (which have their own explicit initial/animate and aren't affected); old-mechanism
+    // characters only get one if the caller actually asked for per-character notifications,
+    // matching the pre-optimization behavior. `DelayedOldMechanismBlock` (which claims a slice of
+    // the shared timeline and gates a mixed block's own reveal start on it, without delaying its
+    // mount) then works correctly. A ~1-2 character boundary overlap can still occur when the
+    // preceding block ends in a nested self-driven run (e.g. `**bold**`) longer than the fixed
+    // "1 slot" estimate used to reserve time for it - a minor imprecision, not the full desync
+    // these cases originally caught.
+    {
+        label: "Fixed: mixed → plain",
+        text: "This is **bold** text here.\n\nPlain paragraph follows right after.",
+    },
+    {
+        label: "Fixed: plain → link",
+        text: "Plain paragraph goes here first.\n\n[A link](start) paragraph follows.",
+    },
+    {
+        label: "Fixed: plain → image",
+        text: "Plain paragraph goes here first.\n\n![alt](start) image paragraph follows.",
+    },
+    {
+        label: "Fixed: plain → inline code",
+        text: "Plain paragraph goes here first.\n\nCall `doSomething()` inline code follows.",
+    },
+    {
+        label: "OK: table ↔ plain",
+        text: "| A | B |\n|---|---|\n| 1 | 2 |\n\nPlain paragraph after table here.",
+    },
 ];
 
 export default function App() {
@@ -241,7 +289,7 @@ export default function App() {
                 }
             });
             setStats({ live, settled });
-        }, 200);
+        }, 1000);
         return () => clearInterval(id);
     }, []);
 
@@ -318,6 +366,7 @@ export default function App() {
                     delay={DELAY}
                     specialCharacters={current.specialCharacters}
                     accumulateConsecutiveDelays={current.accumulateConsecutiveDelays}
+                    remarkPlugins={[remarkGfm]}
                 >
                     {current.text}
                 </MarkdownTypewriter>
