@@ -1,4 +1,4 @@
-import { useRevealSlot } from "@/functions/revealSlots";
+import { AncestorPropagationProvider, useAncestorPropagation, useRevealSlot } from "@/functions/revealSlots";
 import type { SpecialCharacterOptions } from "@/interfaces/MarkdownTypewriterProps";
 import emojiRegex from "emoji-regex";
 import { motion, type Variants } from "motion/react";
@@ -495,9 +495,35 @@ export default function TypewriterItem({
     /** @see MarkdownTypewriterProps.accumulateConsecutiveDelays */
     accumulateConsecutiveDelays?: boolean;
 }) {
+    // A nested inline element (e.g. `**bold**`/`_italic_`/`~~strikethrough~~`) inside a mixed
+    // text+element paragraph has a plain string as ITS OWN children, so it would otherwise
+    // independently qualify for the self-driven scheduler below - decoupling it from its
+    // surrounding plain-text siblings, which still reveal via ancestor propagation because some
+    // of THEIR siblings can be arbitrary embedded elements (images/links) that can't be given an
+    // explicit reveal time. See `useAncestorPropagation`'s doc comment for the full story.
+    const useOldMechanism = useAncestorPropagation();
+
     if (typeof children === "string") {
         const chars = splitStringToCharactersAndEmoji(children);
         const delayAfterMap = buildDelayAfterMap(chars, undefined, specialCharacters, accumulateConsecutiveDelays);
+        if (useOldMechanism) {
+            return dadElement(
+                chars.flatMap((char, i) =>
+                    renderCharSpans(
+                        char,
+                        i,
+                        String(key ?? ""),
+                        delayAfterMap[i],
+                        characterVariants,
+                        onCharacterAnimationComplete,
+                        className,
+                        specialCharacters,
+                        delay,
+                    ),
+                ),
+                true,
+            );
+        }
         return dadElement(
             <SelfDrivenCharSpans
                 key={String(key ?? "")}
@@ -545,7 +571,9 @@ export default function TypewriterItem({
             }
             return child as ReactElement;
         });
-        return dadElement(list as ReactElement[], false);
+        return (
+            <AncestorPropagationProvider>{dadElement(list as ReactElement[], false)}</AncestorPropagationProvider>
+        );
     }
     return dadElement(children as ReactElement, true);
 }

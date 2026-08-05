@@ -45,3 +45,32 @@ export function RevealSlotProvider({ children }: { children: ReactNode }) {
 export function useRevealSlot(): RevealSlotAPI | null {
     return useContext(RevealSlotContext);
 }
+
+/**
+ * Signals that a `TypewriterItem` invocation is nested inside a mixed text+element paragraph
+ * (e.g. plain text with an embedded `**bold**`/`_italic_`/`~~strikethrough~~` run or an image/
+ * link) rather than being a standalone block of its own.
+ *
+ * A mixed paragraph's own direct text still reveals via the older ancestor-propagated
+ * `staggerChildren` mechanism (see `TypewriterItem`'s array branch) rather than the self-driven
+ * per-block scheduler, because some of its children (arbitrary embedded elements like images or
+ * links) can't be given an explicit reveal time without cloning them. A nested inline element
+ * such as `**bold**` has a plain string as ITS OWN `children`, though, so without this signal it
+ * would independently qualify for - and use - the self-driven scheduler while its surrounding
+ * plain-text siblings are still on the old ancestor-propagated clock: two decoupled timelines in
+ * the same paragraph, which is exactly what made bold/italic/strikethrough runs reveal out of
+ * sync with the rest of the sentence. Setting this to `true` around a mixed paragraph's output
+ * makes every nested `TypewriterItem` call (however deep) fall back to the same old mechanism,
+ * keeping the whole paragraph on one consistent clock.
+ */
+const AncestorPropagationContext = createContext(false);
+
+export function AncestorPropagationProvider({ children }: { children: ReactNode }) {
+    return (
+        <AncestorPropagationContext.Provider value={true}>{children}</AncestorPropagationContext.Provider>
+    );
+}
+
+export function useAncestorPropagation(): boolean {
+    return useContext(AncestorPropagationContext);
+}
