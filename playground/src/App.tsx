@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MarkdownTypewriter } from "react-markdown-typewriter";
+import remarkGfm from "remark-gfm";
 
 const DELAY = 30;
 
@@ -318,6 +319,7 @@ export default function App() {
                     delay={DELAY}
                     specialCharacters={current.specialCharacters}
                     accumulateConsecutiveDelays={current.accumulateConsecutiveDelays}
+                    remarkPlugins={[remarkGfm]}
                 >
                     {current.text}
                 </MarkdownTypewriter>
