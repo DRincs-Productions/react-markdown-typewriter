@@ -4,6 +4,7 @@ import emojiRegex from "emoji-regex";
 import { motion, type Variants } from "motion/react";
 import {
     type Key,
+    memo,
     type ReactElement,
     type RefObject,
     useLayoutEffect,
@@ -72,41 +73,37 @@ function splitStringToCharactersAndEmoji(str: string): string[] {
  * - `settled` — its reveal transition already finished and will never animate again, so it's
  *   demoted back to a plain span.
  *
- * When `revealAtMs` is provided the character drives its own timer (self-scheduled reveal,
- * used by the plain-string path - see `computeRevealSchedule`). When omitted, it falls back to
- * the original behavior: no `initial`/`animate` of its own, inheriting "hidden"/"visible" from
- * an animating ancestor via variant propagation + the ancestor's `staggerChildren` (used by the
- * mixed text+element array path, where a handful of embedded images/links still rely on this).
+ * When `active` is provided (boolean) the character is purely prop-driven: the block-level
+ * scheduler (`SelfDrivenCharSpans`) flips it from `false` to `true` when its turn comes up,
+ * via a single shared `requestAnimationFrame` loop rather than each character running its own
+ * timer - batching every character due in the same frame into one update instead of many
+ * separately-timed ones, which is what made the reveal feel uneven/stuttery (independent
+ * `setTimeout`s aren't aligned to the browser's paint cycle the way a single rAF loop is).
+ *
+ * When `active` is omitted, it falls back to the original behavior: no `initial`/`animate` of
+ * its own, inheriting "hidden"/"visible" from an animating ancestor via variant propagation +
+ * the ancestor's `staggerChildren` (used by the mixed text+element array path, where a handful
+ * of embedded images/links still rely on this).
  *
  * Mounting thousands of these as live motion components simultaneously (the old behavior for
  * every character, self-driven or not) is what made very large documents freeze the page for
  * over a minute — see the "pending" phase above for how that's avoided now.
  */
-function CharacterSpan({
+const CharacterSpan = memo(function CharacterSpan({
     char,
     className,
     characterVariants,
     onCharacterAnimationComplete,
-    revealAtMs,
+    active,
 }: {
     char: string;
     className?: string;
     characterVariants: Variants;
     onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
-    revealAtMs?: number;
+    active?: boolean;
 }) {
     const ref = useRef<HTMLSpanElement>(null);
     const [settled, setSettled] = useState(false);
-    const [pending, setPending] = useState(revealAtMs !== undefined && revealAtMs > 0);
-
-    useLayoutEffect(() => {
-        if (revealAtMs === undefined || revealAtMs <= 0) {
-            return;
-        }
-        setPending(true);
-        const timeoutId = setTimeout(() => setPending(false), revealAtMs);
-        return () => clearTimeout(timeoutId);
-    }, [revealAtMs]);
 
     const onAnimationComplete = useMemo(() => {
         const notifyCaller = onCharacterAnimationComplete
@@ -118,7 +115,7 @@ function CharacterSpan({
         };
     }, [onCharacterAnimationComplete]);
 
-    if (pending) {
+    if (active === false) {
         return (
             <span ref={ref} className={className} style={PENDING_STYLE}>
                 {char}
@@ -139,14 +136,14 @@ function CharacterSpan({
             ref={ref}
             className={className}
             variants={characterVariants}
-            initial={revealAtMs !== undefined ? "hidden" : undefined}
-            animate={revealAtMs !== undefined ? "visible" : undefined}
+            initial={active !== undefined ? "hidden" : undefined}
+            animate={active !== undefined ? "visible" : undefined}
             onAnimationComplete={onAnimationComplete}
         >
             {char}
         </motion.span>
     );
-}
+});
 
 /**
  * Pre-computes the effective `delayAfter` for every character in `chars`.
@@ -323,6 +320,14 @@ function computeRevealSchedule(
  * this block's slice of the shared cross-block timeline (see `@/functions/revealSlots`) so
  * sibling blocks (e.g. a heading followed by a paragraph) still type out sequentially instead
  * of every block bursting in parallel from the same mount instant.
+ *
+ * A single `requestAnimationFrame` loop drives every character's reveal instead of each one
+ * running its own independent `setTimeout`: on each frame it advances `revealedCount` past every
+ * character whose scheduled time has arrived and (if that moved at all) issues ONE state update
+ * covering all of them. This ties reveals to the browser's own paint cycle and collapses however
+ * many characters come due in the same frame into a single React commit, instead of many
+ * separately-timed timers firing at arbitrary, uncoordinated moments - which is what made the
+ * reveal feel stuttery despite each individual update being cheap.
  */
 function SelfDrivenCharSpans({
     chars,
@@ -349,16 +354,35 @@ function SelfDrivenCharSpans({
         [chars, delayAfterMap, specialCharacters, baseDelay],
     );
     const totalDurationMs = (localSchedule.at(-1) ?? 0) + baseDelay;
-    const [startOffsetMs, setStartOffsetMs] = useState(0);
+    const [revealedCount, setRevealedCount] = useState(0);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: claim/release must run once per mount, matched
+    // biome-ignore lint/correctness/useExhaustiveDependencies: claim + rAF loop must start exactly once per mount
     useLayoutEffect(() => {
-        if (!revealSlot) {
-            return;
+        const start = revealSlot ? revealSlot.claim(totalDurationMs) : 0;
+        const mountTime = performance.now();
+        let revealed = 0;
+        let rafId: number;
+
+        function tick() {
+            const elapsed = performance.now() - mountTime;
+            let next = revealed;
+            while (next < chars.length && start + localSchedule[next] <= elapsed) {
+                next++;
+            }
+            if (next !== revealed) {
+                revealed = next;
+                setRevealedCount(revealed);
+            }
+            if (revealed < chars.length) {
+                rafId = requestAnimationFrame(tick);
+            }
         }
-        const start = revealSlot.claim(totalDurationMs);
-        setStartOffsetMs(start);
-        return () => revealSlot.release(totalDurationMs);
+        rafId = requestAnimationFrame(tick);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            revealSlot?.release(totalDurationMs);
+        };
     }, []);
 
     return (
@@ -370,7 +394,7 @@ function SelfDrivenCharSpans({
                     className={className}
                     characterVariants={specialCharacters?.[char]?.characterVariants ?? characterVariants}
                     onCharacterAnimationComplete={onCharacterAnimationComplete}
-                    revealAtMs={startOffsetMs + localSchedule[i]}
+                    active={i < revealedCount}
                 />
             ))}
         </>
