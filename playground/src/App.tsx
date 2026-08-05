@@ -354,6 +354,16 @@ const cases: {
         label: "Full markdown feature test",
         text: MARKDOWN_FEATURE_TEST,
     },
+    // `estimateArrayBlockDurationMs` used to count ANY non-string array-branch child as exactly
+    // one reveal slot, regardless of how much text it actually contained. A raw HTML wrapper like
+    // this one holds a whole sentence, so treating it as one slot drastically under-reserved this
+    // block's slice of the shared timeline - the NEXT block (red) started revealing while this one
+    // (blue) was still only a few characters in, and green started over blue+red overlapping too.
+    // Fixed by having the estimate recurse into `props.children` to count the real nested text.
+    {
+        label: "Fixed: sequential raw HTML paragraphs",
+        text: '<span style="color:blue">some *blue* text</span>.\n\n<span style="color:red">some *red* text</span>.\n\n<span style="color:green">some *green* text</span>.',
+    },
 ];
 
 export default function App() {

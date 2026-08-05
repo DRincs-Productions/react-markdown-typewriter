@@ -492,20 +492,44 @@ function SelfDrivenCharSpans({
 }
 
 /**
+ * Recursively estimates how many reveal "slots" a single array-branch child is worth, by walking
+ * down through `props.children` to find the actual string content nested inside it - rather than
+ * assuming every non-string child is worth exactly one slot regardless of size. A short embedded
+ * element (an `<img>`, an `<a>` with a couple words) is close enough to one slot that the
+ * difference doesn't matter, but a raw HTML wrapper (e.g. `<span style="color:blue">some *blue*
+ * text</span>`) can contain an entire sentence - counting it as one slot would reserve a sliver of
+ * the shared timeline for content that actually takes many characters' worth of time to reveal
+ * internally, letting the NEXT block start while this one is still mid-reveal (see
+ * `DelayedOldMechanismBlock` - it only prevents overlap if the reservation is accurate).
+ */
+function estimateElementCharCount(node: unknown): number {
+    if (typeof node === "string") {
+        return splitStringToCharactersAndEmoji(node).length;
+    }
+    if (Array.isArray(node)) {
+        return node.reduce((sum: number, child) => sum + estimateElementCharCount(child), 0);
+    }
+    if (node && typeof node === "object" && "props" in node) {
+        const nestedChildren = (node as { props?: { children?: unknown } }).props?.children;
+        if (nestedChildren !== undefined) {
+            return estimateElementCharCount(nestedChildren);
+        }
+    }
+    // A leaf with no further children (e.g. a void element like <img>/<hr>) - one slot.
+    return 1;
+}
+
+/**
  * Roughly estimates how long a mixed text+element block's own (old-mechanism) reveal will take,
- * in the same "one slot per character/embedded element, `baseDelay` ms per slot" units as
- * `computeRevealSchedule` - just without replicating its exact special-character phantom-slot
- * math (or accounting for a nested self-driven element's real character count), since this is
- * only used to reserve a big-enough slice of the shared cross-block timeline (see
- * `DelayedOldMechanismBlock`), not to drive the block's own internal timing. Treating an
- * embedded element as exactly one slot can under-reserve by a character or two when it's a
- * nested self-driven run (e.g. `**bold**`) longer than one slot's worth of time - a minor
- * boundary overlap, not the full-block desync this mechanism otherwise fixes.
+ * in the same "one slot per character, `baseDelay` ms per slot" units as `computeRevealSchedule` -
+ * just without replicating its exact special-character phantom-slot math, since this is only used
+ * to reserve a big-enough slice of the shared cross-block timeline (see
+ * `DelayedOldMechanismBlock`), not to drive the block's own internal timing.
  */
 function estimateArrayBlockDurationMs(childArray: unknown[], baseDelay: number): number {
     let slots = 0;
     for (const child of childArray) {
-        slots += typeof child === "string" ? splitStringToCharactersAndEmoji(child).length : 1;
+        slots += estimateElementCharCount(child);
     }
     return slots * baseDelay;
 }
