@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MarkdownTypewriter } from "react-markdown-typewriter";
+import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 
 const DELAY = 30;
@@ -443,6 +444,7 @@ export default function App() {
                     specialCharacters={current.specialCharacters}
                     accumulateConsecutiveDelays={current.accumulateConsecutiveDelays}
                     remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
                 >
                     {current.text}
                 </MarkdownTypewriter>
