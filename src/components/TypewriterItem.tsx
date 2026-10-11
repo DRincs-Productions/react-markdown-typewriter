@@ -502,36 +502,90 @@ function SelfDrivenCharSpans({
  * internally, letting the NEXT block start while this one is still mid-reveal (see
  * `DelayedOldMechanismBlock` - it only prevents overlap if the reservation is accurate).
  */
-function estimateElementCharCount(node: unknown): number {
+interface SlotOptions {
+    specialCharacters: { [char: string]: SpecialCharacterOptions } | undefined;
+    accumulate: boolean;
+    baseDelay: number;
+}
+
+/**
+ * Counts the stagger slots a run of characters occupies in the old (phantom-span) mechanism:
+ * one per visible character plus every phantom `renderCharSpans` inserts for `delay`/`delayAfter`.
+ * Ignoring the phantoms made punctuation-heavy mixed paragraphs reserve far less time than they
+ * actually take, so the predicted end of the reveal (and the caller's `onAnimationComplete`)
+ * fired while the text was still typing.
+ */
+function countStringSlots(
+    str: string,
+    nextCharFromSibling: string | undefined,
+    { specialCharacters, accumulate, baseDelay }: SlotOptions,
+): number {
+    const chars = splitStringToCharactersAndEmoji(str);
+    if (!specialCharacters || baseDelay <= 0) return chars.length;
+    const delayAfterMap = buildDelayAfterMap(chars, nextCharFromSibling, specialCharacters, accumulate);
+    let slots = 0;
+    for (let i = 0; i < chars.length; i++) {
+        const specialConfig = specialCharacters[chars[i]];
+        if (specialConfig?.delay !== undefined) {
+            slots += Math.max(0, Math.round((specialConfig.delay - baseDelay) / baseDelay));
+        }
+        slots += 1;
+        const effectiveDelayAfter = delayAfterMap[i];
+        if (effectiveDelayAfter !== undefined) {
+            slots += Math.max(0, Math.round((effectiveDelayAfter - baseDelay) / baseDelay));
+        }
+    }
+    return slots;
+}
+
+/**
+ * Recursively estimates how many reveal "slots" a single array-branch child is worth (see the
+ * doc comment above), mirroring how `TypewriterItem` itself renders strings: in an array, a
+ * string looks at its next string sibling for the consecutive-`delayAfter` rule (default mode
+ * only); a lone nested string (e.g. inside `*em*`) does not.
+ */
+function estimateElementSlots(node: unknown, options: SlotOptions): number {
     if (typeof node === "string") {
-        return splitStringToCharactersAndEmoji(node).length;
+        return countStringSlots(node, undefined, options);
     }
     if (Array.isArray(node)) {
-        return node.reduce((sum: number, child) => sum + estimateElementCharCount(child), 0);
+        return estimateArraySlots(node, options);
     }
     if (node && typeof node === "object" && "props" in node) {
         const nestedChildren = (node as { props?: { children?: unknown } }).props?.children;
         if (nestedChildren !== undefined) {
-            return estimateElementCharCount(nestedChildren);
+            return estimateElementSlots(nestedChildren, options);
         }
     }
     // A leaf with no further children (e.g. a void element like <img>/<hr>) - one slot.
     return 1;
 }
 
-/**
- * Roughly estimates how long a mixed text+element block's own (old-mechanism) reveal will take,
- * in the same "one slot per character, `baseDelay` ms per slot" units as `computeRevealSchedule` -
- * just without replicating its exact special-character phantom-slot math, since this is only used
- * to reserve a big-enough slice of the shared cross-block timeline (see
- * `DelayedOldMechanismBlock`), not to drive the block's own internal timing.
- */
-function estimateArrayBlockDurationMs(childArray: unknown[], baseDelay: number): number {
+function estimateArraySlots(childArray: unknown[], options: SlotOptions): number {
     let slots = 0;
-    for (const child of childArray) {
-        slots += estimateElementCharCount(child);
-    }
-    return slots * baseDelay;
+    childArray.forEach((child, childIdx) => {
+        if (typeof child === "string") {
+            const nextSibling = childArray[childIdx + 1];
+            const nextCharFromSibling =
+                !options.accumulate && typeof nextSibling === "string"
+                    ? splitStringToCharactersAndEmoji(nextSibling)[0]
+                    : undefined;
+            slots += countStringSlots(child, nextCharFromSibling, options);
+        } else {
+            slots += estimateElementSlots(child, options);
+        }
+    });
+    return slots;
+}
+
+/**
+ * Estimates how long a mixed text+element block's own (old-mechanism) reveal will take, in the
+ * same "`baseDelay` ms per slot" units as `computeRevealSchedule`, including the phantom slots
+ * added by `specialCharacters`. Used to reserve the block's slice of the shared cross-block
+ * timeline (see `DelayedOldMechanismBlock`) and so to predict the whole document's end time.
+ */
+function estimateArrayBlockDurationMs(childArray: unknown[], options: SlotOptions): number {
+    return estimateArraySlots(childArray, options) * options.baseDelay;
 }
 
 /**
@@ -737,7 +791,11 @@ export default function TypewriterItem({
         }
         return (
             <DelayedOldMechanismBlock
-                estimatedDurationMs={estimateArrayBlockDurationMs(childArray, delay)}
+                estimatedDurationMs={estimateArrayBlockDurationMs(childArray, {
+                    specialCharacters,
+                    accumulate: accumulateConsecutiveDelays,
+                    baseDelay: delay,
+                })}
                 baseDelay={delay}
             >
                 {content}

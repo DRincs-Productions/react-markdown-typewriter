@@ -1,4 +1,8 @@
-import { useRevealSlotApi, RevealSlotProvider } from "@/functions/revealSlots";
+import {
+    RevealSlotProvider,
+    scheduleRevealComplete,
+    useRevealSlotApi,
+} from "@/functions/revealSlots";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterProps } from "@/interfaces";
 import { motion } from "motion/react";
@@ -51,9 +55,9 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
     // reveal-slot cursor already reflects the whole document's predicted total duration.
     useEffect(() => {
         if (!userOnAnimationComplete) return;
-        const totalMs = revealSlotApi.peek();
-        const timeoutId = setTimeout(() => userOnAnimationComplete("visible"), totalMs);
-        return () => clearTimeout(timeoutId);
+        return scheduleRevealComplete(revealSlotApi.peek(), () =>
+            userOnAnimationComplete("visible"),
+        );
     }, [userOnAnimationComplete, revealSlotApi]);
 
     if (delay <= 0) {

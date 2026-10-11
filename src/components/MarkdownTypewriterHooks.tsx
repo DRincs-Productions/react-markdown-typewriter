@@ -1,9 +1,15 @@
-import { useRevealSlotApi, RevealSlotProvider } from "@/functions/revealSlots";
+import {
+    RevealSlotProvider,
+    scheduleRevealComplete,
+    useRevealSlotApi,
+} from "@/functions/revealSlots";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterHooksProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MarkdownHooks } from "react-markdown";
+
+const FALLBACK_ATTRIBUTE = "data-typewriter-fallback";
 
 export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksProps) {
     const {
@@ -13,6 +19,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         components: externalComponents,
         specialCharacters,
         accumulateConsecutiveDelays,
+        fallback,
         ...rest
     } = props;
     const {
@@ -30,7 +37,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
     });
     const [animated, set] = useState<"hidden" | "visible">("hidden");
     const containerRef = useRef<HTMLSpanElement>(null);
-    const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cancelCompletionRef = useRef<(() => void) | null>(null);
 
     const mergedComponents = useMemo(
         () => ({
@@ -67,10 +74,8 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         function reveal() {
             set("visible");
             if (userOnAnimationComplete) {
-                const totalMs = revealSlotApi.peek();
-                completionTimeoutRef.current = setTimeout(
-                    () => userOnAnimationComplete("visible"),
-                    totalMs,
+                cancelCompletionRef.current = scheduleRevealComplete(revealSlotApi.peek(), () =>
+                    userOnAnimationComplete("visible"),
                 );
             }
         }
@@ -80,25 +85,33 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         // (e.g. a cold/contended webview) can resolve that later than any fixed delay, which
         // races the children mounting after we've already animated to "visible" and makes them
         // pop in instantly instead of animating. Watch the DOM directly and reveal only once
-        // the real content has actually mounted.
-        if (node.childNodes.length > 0) {
+        // the real content has actually mounted - ignoring the caller's `fallback`, which
+        // MarkdownHooks renders in the meantime: treating it as content revealed before any block
+        // had claimed its slice, so peek() was ~0 and onAnimationComplete fired almost at once.
+        const hasContent = () =>
+            Array.from(node.childNodes).some(
+                (child) => !(child instanceof Element && child.hasAttribute(FALLBACK_ATTRIBUTE)),
+            );
+
+        if (hasContent()) {
             reveal();
             return () => {
                 set("hidden");
-                if (completionTimeoutRef.current) clearTimeout(completionTimeoutRef.current);
+                cancelCompletionRef.current?.();
             };
         }
 
         const observer = new MutationObserver(() => {
+            if (!hasContent()) return;
             observer.disconnect();
             reveal();
         });
-        observer.observe(node, { childList: true, subtree: true });
+        observer.observe(node, { childList: true });
 
         return () => {
             observer.disconnect();
             set("hidden");
-            if (completionTimeoutRef.current) clearTimeout(completionTimeoutRef.current);
+            cancelCompletionRef.current?.();
         };
     }, [text]);
 
@@ -121,7 +134,15 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
                 animate={animated}
                 {...restMotionProps}
             >
-                <MarkdownHooks {...rest} components={mergedComponents}>
+                <MarkdownHooks
+                    {...rest}
+                    components={mergedComponents}
+                    fallback={
+                        fallback === undefined ? undefined : (
+                            <span {...{ [FALLBACK_ATTRIBUTE]: "" }}>{fallback}</span>
+                        )
+                    }
+                >
                     {text}
                 </MarkdownHooks>
             </motion.span>
