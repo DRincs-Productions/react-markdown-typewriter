@@ -1,5 +1,6 @@
 import {
     AncestorPropagationProvider,
+    revealAfterMotionFrame,
     useAncestorPropagation,
     useRevealSlot,
 } from "@/functions/revealSlots";
@@ -522,7 +523,12 @@ function countStringSlots(
 ): number {
     const chars = splitStringToCharactersAndEmoji(str);
     if (!specialCharacters || baseDelay <= 0) return chars.length;
-    const delayAfterMap = buildDelayAfterMap(chars, nextCharFromSibling, specialCharacters, accumulate);
+    const delayAfterMap = buildDelayAfterMap(
+        chars,
+        nextCharFromSibling,
+        specialCharacters,
+        accumulate,
+    );
     let slots = 0;
     for (let i = 0; i < chars.length; i++) {
         const specialConfig = specialCharacters[chars[i]];
@@ -596,10 +602,14 @@ function estimateArrayBlockDurationMs(childArray: unknown[], options: SlotOption
  * ancestor to inherit from, rather than resolving against nothing and settling however Framer
  * treats an absent inheritance source.
  *
- * `animate` starts unset (only `initial="hidden"` applies), so nothing animates yet and there's no
+ * `animate` starts equal to `initial` (both "hidden"), so nothing animates yet and there's no
  * transition to prematurely resolve; only once a plain JS timer (matching the claimed offset)
  * flips local state to "visible" does the transition begin - the same pattern
  * `MarkdownTypewriterHooks` already uses for its own top-level gate.
+ *
+ * (Leaving `animate` unset until the flip instead of starting at "hidden" - tried in v1.3.8 -
+ * made the flip never animate at all when it happened in this layout effect, so mixed paragraphs
+ * rendered by the synchronous `MarkdownTypewriter` stayed hidden forever.)
  *
  * The actual bug that made an earlier version of this appear broken wasn't this gate at all: it
  * was `CharacterSpan` unconditionally attaching an `onAnimationComplete` handler (added for the
@@ -622,24 +632,27 @@ function DelayedOldMechanismBlock({
     children: ReactNode;
 }) {
     const revealSlot = useRevealSlot();
-    // `undefined` (not "hidden") until the reveal starts - see `MarkdownTypewriterHooks`'s own
-    // `animated` state for why mounting with `animate="hidden"` can leave characters stuck hidden.
-    const [animated, setAnimated] = useState<"visible" | undefined>(undefined);
+    const [animated, setAnimated] = useState<"hidden" | "visible">("hidden");
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: claim must run exactly once per mount
     useLayoutEffect(() => {
+        // See `revealAfterMotionFrame` for why the flip waits for Motion's frame loop.
+        const reveal = () => revealAfterMotionFrame(() => setAnimated("visible"));
         if (!revealSlot) {
-            setAnimated("visible");
-            return;
+            return reveal();
         }
         const start = revealSlot.claim(estimatedDurationMs);
-        if (start <= 0) {
-            setAnimated("visible");
-            return () => revealSlot.release(estimatedDurationMs);
-        }
-        const timeoutId = setTimeout(() => setAnimated("visible"), start);
+        let cancelReveal: (() => void) | undefined;
+        const timeoutId =
+            start <= 0
+                ? undefined
+                : setTimeout(() => {
+                      cancelReveal = reveal();
+                  }, start);
+        if (start <= 0) cancelReveal = reveal();
         return () => {
             clearTimeout(timeoutId);
+            cancelReveal?.();
             revealSlot.release(estimatedDurationMs);
         };
     }, []);

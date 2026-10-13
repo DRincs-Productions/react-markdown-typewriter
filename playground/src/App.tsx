@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MarkdownTypewriter } from "react-markdown-typewriter";
+import { MarkdownTypewriter, MarkdownTypewriterHooks } from "react-markdown-typewriter";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 
@@ -371,6 +371,8 @@ export default function App() {
     const [key, setKey] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const [stats, setStats] = useState({ live: 0, settled: 0 });
+    const [useHooks, setUseHooks] = useState(false);
+    const Typewriter = useHooks ? MarkdownTypewriterHooks : MarkdownTypewriter;
 
     const current = cases[active];
 
@@ -442,6 +444,22 @@ export default function App() {
                 >
                     ↺ Replay
                 </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setUseHooks((v) => !v);
+                        setKey((k) => k + 1);
+                    }}
+                    style={{
+                        padding: "4px 10px",
+                        borderRadius: 4,
+                        border: "1px solid #ccc",
+                        cursor: "pointer",
+                        fontSize: 13,
+                    }}
+                >
+                    Component: {useHooks ? "MarkdownTypewriterHooks" : "MarkdownTypewriter"}
+                </button>
             </div>
 
             <div style={{ display: "flex", gap: 16, marginBottom: 8, fontSize: 13, color: "#666" }}>
@@ -461,7 +479,7 @@ export default function App() {
                     lineHeight: 1.6,
                 }}
             >
-                <MarkdownTypewriter
+                <Typewriter
                     key={key}
                     delay={DELAY}
                     specialCharacters={current.specialCharacters}
@@ -470,7 +488,7 @@ export default function App() {
                     rehypePlugins={[rehypeRaw]}
                 >
                     {current.text}
-                </MarkdownTypewriter>
+                </Typewriter>
             </div>
 
             <pre

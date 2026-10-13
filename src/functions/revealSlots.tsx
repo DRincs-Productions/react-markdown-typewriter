@@ -1,3 +1,4 @@
+import { cancelFrame, frame } from "motion/react";
 import { type ReactNode, createContext, useContext, useMemo } from "react";
 
 /**
@@ -95,6 +96,30 @@ export function scheduleRevealComplete(totalMs: number, callback: () => void): (
     return () => {
         clearTimeout(timeoutId);
         if (rafId !== undefined) cancelAnimationFrame(rafId);
+    };
+}
+
+/**
+ * Calls `callback` (meant to flip a gate from "hidden" to "visible") from Motion's own frame loop,
+ * after its `update` step, and returns a cancel function.
+ *
+ * A gate mounted with `animate="hidden"` makes Motion re-assert each variant child's (already
+ * hidden) value with a deferred `frame.update(() => value.set(0))`. If the gate flipped to
+ * "visible" straight away (e.g. synchronously in a layout effect) and the main thread was then
+ * busy - e.g. committing a long paragraph - the first characters' short stagger delays elapsed
+ * and their "visible" animations finished BEFORE that frame ran, so the stale re-assert set them
+ * back to 0 for good, leaving a hole at the start of the revealed text. Flipping in `postRender`
+ * guarantees any such re-assert has already run.
+ */
+export function revealAfterMotionFrame(callback: () => void): () => void {
+    let cancelled = false;
+    const process = () => {
+        if (!cancelled) callback();
+    };
+    frame.postRender(process);
+    return () => {
+        cancelled = true;
+        cancelFrame(process);
     };
 }
 
