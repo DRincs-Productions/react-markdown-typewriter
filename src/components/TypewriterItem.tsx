@@ -596,7 +596,7 @@ function estimateArrayBlockDurationMs(childArray: unknown[], options: SlotOption
  * ancestor to inherit from, rather than resolving against nothing and settling however Framer
  * treats an absent inheritance source.
  *
- * `animate` starts equal to `initial` (both "hidden"), so nothing animates yet and there's no
+ * `animate` starts unset (only `initial="hidden"` applies), so nothing animates yet and there's no
  * transition to prematurely resolve; only once a plain JS timer (matching the claimed offset)
  * flips local state to "visible" does the transition begin - the same pattern
  * `MarkdownTypewriterHooks` already uses for its own top-level gate.
@@ -622,7 +622,9 @@ function DelayedOldMechanismBlock({
     children: ReactNode;
 }) {
     const revealSlot = useRevealSlot();
-    const [animated, setAnimated] = useState<"hidden" | "visible">("hidden");
+    // `undefined` (not "hidden") until the reveal starts - see `MarkdownTypewriterHooks`'s own
+    // `animated` state for why mounting with `animate="hidden"` can leave characters stuck hidden.
+    const [animated, setAnimated] = useState<"visible" | undefined>(undefined);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: claim must run exactly once per mount
     useLayoutEffect(() => {

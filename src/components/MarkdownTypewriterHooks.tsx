@@ -35,7 +35,6 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         specialCharacters,
         accumulateConsecutiveDelays,
     });
-    const [animated, set] = useState<"hidden" | "visible">("hidden");
     const containerRef = useRef<HTMLSpanElement>(null);
     const cancelCompletionRef = useRef<(() => void) | null>(null);
 
@@ -52,6 +51,16 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         [text],
     );
     const revealSlotApi = useRevealSlotApi(key);
+
+    // `animate` stays unset (only `initial="hidden"` applies) until the content is ready to reveal,
+    // instead of starting at "hidden": mounting with `animate="hidden"` makes Motion re-assert every
+    // variant child's already-hidden value via a deferred `frame.update(() => value.set(0))`. If
+    // the main thread is busy (e.g. committing a long paragraph), the first characters' short
+    // stagger delays elapse and their "visible" animations finish BEFORE that frame runs, so the
+    // stale re-assert then sets them back to 0 for good - leaving a hole in the revealed text.
+    // The state is tied to `key` so that new text never mounts with the previous text's "visible".
+    const [revealedKey, setRevealedKey] = useState<string | null>(null);
+    const animated = revealedKey === key ? "visible" : undefined;
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: text change triggers animation reset
     useEffect(() => {
@@ -72,7 +81,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         // as "typewriter reveal finished" would act on that immediately, well before the text/images/
         // links actually finished revealing).
         function reveal() {
-            set("visible");
+            setRevealedKey(key);
             if (userOnAnimationComplete) {
                 cancelCompletionRef.current = scheduleRevealComplete(revealSlotApi.peek(), () =>
                     userOnAnimationComplete("visible"),
@@ -96,7 +105,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         if (hasContent()) {
             reveal();
             return () => {
-                set("hidden");
+                setRevealedKey(null);
                 cancelCompletionRef.current?.();
             };
         }
@@ -110,7 +119,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
 
         return () => {
             observer.disconnect();
-            set("hidden");
+            setRevealedKey(null);
             cancelCompletionRef.current?.();
         };
     }, [text]);
