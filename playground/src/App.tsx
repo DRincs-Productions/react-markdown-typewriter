@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { MarkdownTypewriter, MarkdownTypewriterHooks } from "react-markdown-typewriter";
-import rehypeRaw from "rehype-raw";
-import remarkGfm from "remark-gfm";
 
 const DELAY = 30;
 
@@ -280,6 +278,25 @@ const cases: {
         text: "Héllo wörld! Ñoño? Ünïcödé... works.",
         specialCharacters: SPECIAL_CHARACTERS,
     },
+    // ── @tanstack/markdown migration ───────────────────────────────────────────────
+    // TanStack Markdown keeps character references as literal text; the renderer adapter
+    // decodes them so content written for react-markdown keeps rendering the same characters.
+    {
+        label: "Entities (&nbsp; &amp; &#8230;)",
+        text: "Wait&#8230; Tom&nbsp;&amp;&nbsp;Jerry said: &quot;hello&quot;.",
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    // Mixed text + link paragraph, the shape that produced stuck-hidden characters in the
+    // interactive-fiction template (see v1.3.8).
+    {
+        label: "Narration: text + link",
+        text: `Osric said: "Then you'll want to prove you're worth feeding, first."&nbsp;Osric said: He nods toward a nail-worn notice pinned by the door. [Read the notice](notice_board)`,
+        specialCharacters: {
+            ".": { delayAfter: 300 },
+            ",": { delayAfter: 75 },
+            ":": { delay: 60, delayAfter: 150 },
+        },
+    },
     // ── perf regression repro ───────────────────────────────────────────────────
     {
         label: "Perf: large document",
@@ -484,8 +501,6 @@ export default function App() {
                     delay={DELAY}
                     specialCharacters={current.specialCharacters}
                     accumulateConsecutiveDelays={current.accumulateConsecutiveDelays}
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
                 >
                     {current.text}
                 </Typewriter>

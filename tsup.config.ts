@@ -14,7 +14,7 @@ export default defineConfig((options) => {
         minify: true,
         bundle: true,
         skipNodeModulesBundle: false, // Skip bundling of node_modules
-        external: ["motion", "react", "react-dom", "react-markdown"],
+        external: ["motion", "react", "react-dom", /^@tanstack\/markdown/],
         outExtension({ format }) {
             return {
                 js: format === "esm" ? ".mjs" : ".cjs",

@@ -4,13 +4,11 @@ import {
     scheduleRevealComplete,
     useRevealSlotApi,
 } from "@/functions/revealSlots";
+import { MarkdownRenderer } from "@/functions/tanstackMarkdown";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterHooksProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MarkdownHooks } from "react-markdown";
-
-const FALLBACK_ATTRIBUTE = "data-typewriter-fallback";
 
 export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksProps) {
     const {
@@ -20,7 +18,8 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
         components: externalComponents,
         specialCharacters,
         accumulateConsecutiveDelays,
-        fallback,
+        // TanStack Markdown renders synchronously: there is no loading state to show it for.
+        fallback: _fallback,
         ...rest
     } = props;
     const {
@@ -87,37 +86,11 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
             }
         }
 
-        // MarkdownHooks mounts its tree asynchronously (it runs the unified processor in its
-        // own effect), so we can't flip to "visible" on a fixed timer - a slow environment
-        // (e.g. a cold/contended webview) can resolve that later than any fixed delay, which
-        // races the children mounting after we've already animated to "visible" and makes them
-        // pop in instantly instead of animating. Watch the DOM directly and reveal only once
-        // the real content has actually mounted - ignoring the caller's `fallback`, which
-        // MarkdownHooks renders in the meantime: treating it as content revealed before any block
-        // had claimed its slice, so peek() was ~0 and onAnimationComplete fired almost at once.
-        const hasContent = () =>
-            Array.from(node.childNodes).some(
-                (child) => !(child instanceof Element && child.hasAttribute(FALLBACK_ATTRIBUTE)),
-            );
-
-        if (hasContent()) {
-            reveal();
-            return () => {
-                cancelRevealRef.current?.();
-                setRevealedKey(null);
-                cancelCompletionRef.current?.();
-            };
-        }
-
-        const observer = new MutationObserver(() => {
-            if (!hasContent()) return;
-            observer.disconnect();
-            reveal();
-        });
-        observer.observe(node, { childList: true });
-
+        // TanStack Markdown renders synchronously, so by now the whole tree has mounted (unlike
+        // react-markdown's MarkdownHooks, which resolved it in its own effect and needed a
+        // MutationObserver to wait for the content).
+        reveal();
         return () => {
-            observer.disconnect();
             cancelRevealRef.current?.();
             setRevealedKey(null);
             cancelCompletionRef.current?.();
@@ -126,7 +99,7 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
 
     if (delay <= 0) {
         console.warn(
-            "MarkdownTypewriterHooks: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard react-markdown MarkdownHooks component instead.",
+            "MarkdownTypewriterHooks: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard @tanstack/markdown Markdown component instead.",
         );
     }
 
@@ -143,17 +116,9 @@ export default function MarkdownTypewriterHooks(props: MarkdownTypewriterHooksPr
                 animate={animated}
                 {...restMotionProps}
             >
-                <MarkdownHooks
-                    {...rest}
-                    components={mergedComponents}
-                    fallback={
-                        fallback === undefined ? undefined : (
-                            <span {...{ [FALLBACK_ATTRIBUTE]: "" }}>{fallback}</span>
-                        )
-                    }
-                >
+                <MarkdownRenderer {...rest} components={mergedComponents}>
                     {text}
-                </MarkdownHooks>
+                </MarkdownRenderer>
             </motion.span>
         </RevealSlotProvider>
     );

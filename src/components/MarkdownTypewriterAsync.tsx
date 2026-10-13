@@ -1,9 +1,9 @@
 import { RevealSlotProvider } from "@/functions/revealSlots";
+import { MarkdownRenderer } from "@/functions/tanstackMarkdown";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useMemo } from "react";
-import { MarkdownAsync } from "react-markdown";
 
 export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterProps) {
     const {
@@ -39,7 +39,7 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
 
     if (delay <= 0) {
         console.warn(
-            "MarkdownTypewriterAsync: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard react-markdown MarkdownAsync component instead.",
+            "MarkdownTypewriterAsync: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard @tanstack/markdown Markdown component instead.",
         );
     }
 
@@ -47,16 +47,17 @@ export default async function MarkdownTypewriterAsync(props: MarkdownTypewriterP
         return <span />;
     }
 
-    const markdown = await MarkdownAsync({
-        ...rest,
-        components: mergedComponents,
-        children: text,
-    });
-
     return (
         <RevealSlotProvider key={key}>
-            <motion.span variants={sentenceVariants} initial="hidden" animate={"visible"} {...restMotionProps}>
-                {markdown}
+            <motion.span
+                variants={sentenceVariants}
+                initial="hidden"
+                animate={"visible"}
+                {...restMotionProps}
+            >
+                <MarkdownRenderer {...rest} components={mergedComponents}>
+                    {text}
+                </MarkdownRenderer>
             </motion.span>
         </RevealSlotProvider>
     );

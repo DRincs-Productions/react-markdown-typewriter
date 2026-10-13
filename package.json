@@ -38,6 +38,7 @@
   "homepage": "https://github.com/DRincs-Productions/react-markdown-typewriter",
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",
+    "@tanstack/markdown": "^1.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "emoji-regex": "^10.6.0",
@@ -49,7 +50,7 @@
     "motion": ">=12.9.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "react-markdown": ">=10.1.0"
+    "@tanstack/markdown": ">=1.0.0"
   },
   "keywords": [
     "ast",

@@ -1,6 +1,7 @@
 import type { HTMLMotionProps, Variants } from "motion/react";
-import type { RefObject } from "react";
-import type { HooksOptions, Options } from "react-markdown";
+import type { MarkdownComponentMap } from "@/functions/tanstackMarkdown";
+import type { MarkdownReactOptions } from "@tanstack/markdown/react";
+import type { ReactNode, RefObject } from "react";
 
 /**
  * Per-character animation overrides for a single special character.
@@ -157,5 +158,21 @@ interface TypewriterProps {
         onCharacterAnimationComplete?: (letterRef: RefObject<HTMLSpanElement | null>) => void;
     };
 }
-export default interface MarkdownTypewriterProps extends Options, TypewriterProps {}
-export interface MarkdownTypewriterHooksProps extends HooksOptions, TypewriterProps {}
+interface MarkdownOptions extends Omit<MarkdownReactOptions, "components"> {
+    /**
+     * The markdown text to render.
+     */
+    children?: string | null;
+    /**
+     * Replace the element rendered for an HTML tag (keyed by tag name, e.g. `a`, `img`, `p`).
+     */
+    components?: MarkdownComponentMap;
+}
+export default interface MarkdownTypewriterProps extends MarkdownOptions, TypewriterProps {}
+export interface MarkdownTypewriterHooksProps extends MarkdownOptions, TypewriterProps {
+    /**
+     * Kept for API compatibility with the react-markdown based version: TanStack Markdown
+     * renders synchronously, so there is no loading state and the fallback is never shown.
+     */
+    fallback?: ReactNode;
+}

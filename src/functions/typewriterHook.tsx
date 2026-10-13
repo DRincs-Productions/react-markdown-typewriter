@@ -39,7 +39,13 @@ export default function useTypewriterHook(props: {
                 specialCharacters,
                 accumulateConsecutiveDelays,
             }),
-        [delay, characterVariants, onCharacterAnimationComplete, specialCharacters, accumulateConsecutiveDelays],
+        [
+            delay,
+            characterVariants,
+            onCharacterAnimationComplete,
+            specialCharacters,
+            accumulateConsecutiveDelays,
+        ],
     );
 
     return {

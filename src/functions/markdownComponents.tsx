@@ -7,8 +7,8 @@ import {
     motion,
     type Variants,
 } from "motion/react";
+import type { MarkdownComponentMap } from "@/functions/tanstackMarkdown";
 import type { ClassAttributes, ElementType, HTMLAttributes, RefObject } from "react";
-import type { Components, ExtraProps } from "react-markdown";
 
 export default function markdownComponents({
     characterVariants,
@@ -22,8 +22,8 @@ export default function markdownComponents({
     delay: number;
     specialCharacters?: { [char: string]: SpecialCharacterOptions };
     accumulateConsecutiveDelays?: boolean;
-}): Components {
-    const res: Components = {};
+}): MarkdownComponentMap {
+    const res: MarkdownComponentMap = {};
     const sentenceVariants = {
         hidden: characterVariants.hidden,
         visible: {
@@ -40,8 +40,7 @@ export default function markdownComponents({
             if (MotionComponent) {
                 const fn: ElementType<
                     ClassAttributes<HTMLHeadingElement> &
-                        HTMLAttributes<HTMLHeadingElement> &
-                        ExtraProps
+                        HTMLAttributes<HTMLHeadingElement> & { node?: unknown }
                 > = (props) => {
                     const { children, id, className } = props;
                     const { node, ...componentProps } = props;

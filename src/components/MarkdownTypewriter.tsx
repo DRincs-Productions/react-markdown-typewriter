@@ -3,11 +3,11 @@ import {
     scheduleRevealComplete,
     useRevealSlotApi,
 } from "@/functions/revealSlots";
+import { MarkdownRenderer } from "@/functions/tanstackMarkdown";
 import useTypewriterHook from "@/functions/typewriterHook";
 import type { MarkdownTypewriterProps } from "@/interfaces";
 import { motion } from "motion/react";
 import { useEffect, useMemo } from "react";
-import Markdown from "react-markdown";
 
 export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
     const {
@@ -62,7 +62,7 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
 
     if (delay <= 0) {
         console.warn(
-            "MarkdownTypewriter: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard react-markdown Markdown component instead.",
+            "MarkdownTypewriter: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard @tanstack/markdown Markdown component instead.",
         );
     }
 
@@ -78,9 +78,9 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
                 animate="visible"
                 {...restMotionProps}
             >
-                <Markdown {...rest} components={mergedComponents}>
+                <MarkdownRenderer {...rest} components={mergedComponents}>
                     {text}
-                </Markdown>
+                </MarkdownRenderer>
             </motion.span>
         </RevealSlotProvider>
     );
