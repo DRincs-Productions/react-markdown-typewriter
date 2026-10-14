@@ -15,6 +15,8 @@
     "types": ["node"],
     "paths": {
       "react-markdown-typewriter": ["../src/index.ts"],
+      "react-markdown-typewriter/core": ["../src/core/index.ts"],
+      "react-markdown-typewriter/react": ["../src/react/index.ts"],
       "@/*": ["../src/*"]
     }
   },

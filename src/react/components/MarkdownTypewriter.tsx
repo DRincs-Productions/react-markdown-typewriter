@@ -2,10 +2,10 @@ import {
     RevealSlotProvider,
     scheduleRevealComplete,
     useRevealSlotApi,
-} from "@/functions/revealSlots";
-import { MarkdownRenderer } from "@/functions/tanstackMarkdown";
-import useTypewriterHook from "@/functions/typewriterHook";
-import type { MarkdownTypewriterProps } from "@/interfaces";
+} from "@/react/functions/revealSlots";
+import { MarkdownRenderer } from "@/react/functions/tanstackMarkdown";
+import useTypewriterHook from "@/react/functions/typewriterHook";
+import type { MarkdownTypewriterProps } from "@/react/interfaces";
 import { motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 

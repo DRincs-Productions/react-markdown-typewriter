@@ -1,5 +1,5 @@
-import TypewriterItem from "@/components/TypewriterItem";
-import type { SpecialCharacterOptions } from "@/interfaces/MarkdownTypewriterProps";
+import TypewriterItem from "@/react/components/TypewriterItem";
+import type { SpecialCharacterOptions } from "@/react/interfaces/MarkdownTypewriterProps";
 import htmlTags from "html-tags";
 import {
     type ForwardRefComponent,
@@ -7,7 +7,7 @@ import {
     motion,
     type Variants,
 } from "motion/react";
-import type { MarkdownComponentMap } from "@/functions/tanstackMarkdown";
+import type { MarkdownComponentMap } from "@/react/functions/tanstackMarkdown";
 import type { ClassAttributes, ElementType, HTMLAttributes, RefObject } from "react";
 
 export default function markdownComponents({

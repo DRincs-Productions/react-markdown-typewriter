@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MarkdownTypewriter } from "react-markdown-typewriter";
+import { MarkdownTypewriter } from "react-markdown-typewriter/react";
 
 const DELAY = 30;
 

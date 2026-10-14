@@ -1,5 +1,6 @@
+import type { SpecialCharacterTiming } from "@/core/characters";
 import type { HTMLMotionProps, Variants } from "motion/react";
-import type { MarkdownComponentMap } from "@/functions/tanstackMarkdown";
+import type { MarkdownComponentMap } from "@/react/functions/tanstackMarkdown";
 import type { MarkdownReactOptions } from "@tanstack/markdown/react";
 import type { RefObject } from "react";
 
@@ -27,21 +28,7 @@ import type { RefObject } from "react";
  *     "?": { delayAfter: 500 },
  * };
  */
-export interface SpecialCharacterOptions {
-    /**
-     * Overrides the global stagger delay for THIS character — i.e. how long the typewriter
-     * waits before this character appears.
-     *
-     * **No consecutive rule**: every occurrence gets its own override, even in `"..."`.
-     */
-    delay?: number;
-    /**
-     * Inserts a pause *after* this character before the next one appears.
-     *
-     * **Consecutive rule applies**: in `"..."` only the LAST `.` triggers; in `"?!?"` only the last `?`
-     * triggers; in `". . ."` each `.` triggers (a space breaks the sequence).
-     */
-    delayAfter?: number;
+export interface SpecialCharacterOptions extends SpecialCharacterTiming {
     /**
      * Custom motion variants for this character.
      * Overrides `motionProps.characterVariants` for this specific character.

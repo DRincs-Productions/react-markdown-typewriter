@@ -7,6 +7,9 @@ export default defineConfig((options) => {
         target: "es2022",
         entry: {
             index: "src/index.ts",
+            // Framework-agnostic: must not import react or motion.
+            core: "src/core/index.ts",
+            react: "src/react/index.ts",
         },
         treeshake: true,
         // `dist` is emptied by the `build` script: both configs below run in parallel, so letting

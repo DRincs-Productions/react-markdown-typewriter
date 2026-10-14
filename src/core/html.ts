@@ -20,6 +20,10 @@ import { parseMarkdown } from "@tanstack/markdown/parser";
  * every other element, so their text animates like the rest of the document and their
  * attributes (e.g. `style="color:blue"`) still apply.
  *
+ * The rebuilt nodes keep plain HTML attributes in `properties`, so the result also works with
+ * `@tanstack/markdown/html`'s `renderHtml` (as sanitized HTML). The React renderer converts them
+ * into React props (`class` -> `className`, `style` string -> object) before rendering.
+ *
  * Elements are built as React elements, never injected as HTML strings: `<script>`/`<style>`
  * and similar tags are dropped (with their content), as are `on*` event handler attributes and
  * `javascript:`/`vbscript:`/non-image `data:` URLs.
@@ -251,63 +255,6 @@ function buildTree<TNode, TChild>({
     return root;
 }
 
-/** HTML attribute names whose React prop name differs (beyond `on*`, which are dropped). */
-const REACT_PROP_NAMES: Record<string, string> = {
-    class: "className",
-    for: "htmlFor",
-    tabindex: "tabIndex",
-    readonly: "readOnly",
-    maxlength: "maxLength",
-    colspan: "colSpan",
-    rowspan: "rowSpan",
-    cellpadding: "cellPadding",
-    cellspacing: "cellSpacing",
-    contenteditable: "contentEditable",
-    crossorigin: "crossOrigin",
-    datetime: "dateTime",
-    srcset: "srcSet",
-    usemap: "useMap",
-    accesskey: "accessKey",
-    autocomplete: "autoComplete",
-    autoplay: "autoPlay",
-    "accept-charset": "acceptCharset",
-    "http-equiv": "httpEquiv",
-};
-
-function styleToObject(style: string): Record<string, string> {
-    const result: Record<string, string> = {};
-    for (const declaration of style.split(";")) {
-        const colon = declaration.indexOf(":");
-        if (colon === -1) continue;
-        const property = declaration.slice(0, colon).trim();
-        const value = declaration.slice(colon + 1).trim();
-        if (!property || !value) continue;
-        const key = property.startsWith("--")
-            ? property
-            : property.toLowerCase().replace(/-([a-z])/g, (_, char: string) => char.toUpperCase());
-        result[key] = value;
-    }
-    return result;
-}
-
-/**
- * Converts HTML attributes into React props. The React renderer spreads a component node's
- * `properties` straight into `createElement` - also for tags without a component mapping - so
- * they must already be valid React props (a `style` string would make React throw).
- */
-function toReactProps(attributes: Record<string, string>): Record<string, string> {
-    const props: Record<string, unknown> = {};
-    for (const [name, value] of Object.entries(attributes)) {
-        if (name === "style") {
-            props.style = styleToObject(value);
-        } else {
-            props[REACT_PROP_NAMES[name] ?? name] = value;
-        }
-    }
-    // Typed as strings by TanStack's AST, but only ever read back by the React renderer.
-    return props as Record<string, string>;
-}
-
 function inlineElement(
     tag: string,
     attributes: Record<string, string>,
@@ -318,7 +265,7 @@ function inlineElement(
         name: tag,
         tagName: tag,
         attributes: {},
-        properties: toReactProps(attributes),
+        properties: attributes,
         children,
     };
     return node;
@@ -407,7 +354,7 @@ function transformBlocks(blocks: BlockNode[], options: ParseOptions): BlockNode[
                 name: tag,
                 tagName: tag,
                 attributes: {},
-                properties: toReactProps(attributes),
+                properties: attributes,
                 children,
             };
             return node;

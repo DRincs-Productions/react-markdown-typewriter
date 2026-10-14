@@ -1,5 +1,5 @@
-import markdownComponents from "@/functions/markdownComponents";
-import type { MarkdownTypewriterProps, SpecialCharacterOptions } from "@/interfaces";
+import markdownComponents from "@/react/functions/markdownComponents";
+import type { MarkdownTypewriterProps, SpecialCharacterOptions } from "@/react/interfaces";
 import type { Variants } from "motion/react";
 import { type RefObject, useMemo } from "react";
 

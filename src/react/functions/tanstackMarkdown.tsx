@@ -1,74 +1,11 @@
-import type { InlineNode, MarkdownExtension } from "@tanstack/markdown";
-import { htmlExtension } from "@/functions/htmlExtension";
+import { entityDecoderExtension } from "@/core/entities";
+import { htmlExtension } from "@/core/html";
+import { toReactDocument } from "@/react/functions/htmlProps";
 import { parseMarkdown } from "@tanstack/markdown/parser";
 import { type MarkdownReactOptions, renderMarkdownReact } from "@tanstack/markdown/react";
 import { type ComponentType, Fragment, type ReactNode, useMemo } from "react";
 
 export type MarkdownComponentMap = Record<string, string | ComponentType<any> | undefined>;
-
-const NAMED_ENTITIES: Record<string, string> = {
-    amp: "&",
-    lt: "<",
-    gt: ">",
-    quot: '"',
-    apos: "'",
-    nbsp: " ",
-    hellip: "…",
-    mdash: "—",
-    ndash: "–",
-    lsquo: "‘",
-    rsquo: "’",
-    ldquo: "“",
-    rdquo: "”",
-    laquo: "«",
-    raquo: "»",
-    copy: "©",
-    reg: "®",
-    trade: "™",
-    shy: "­",
-    zwj: "‍",
-    zwnj: "‌",
-};
-
-const ENTITY_REGEX = /&(#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g;
-
-function decodeEntities(value: string): string {
-    if (!value.includes("&")) return value;
-    return value.replace(ENTITY_REGEX, (match, body: string) => {
-        if (body[0] === "#") {
-            const code =
-                body[1] === "x" || body[1] === "X"
-                    ? Number.parseInt(body.slice(2), 16)
-                    : Number.parseInt(body.slice(1), 10);
-            return Number.isFinite(code) && code > 0 && code <= 0x10ffff
-                ? String.fromCodePoint(code)
-                : match;
-        }
-        return NAMED_ENTITIES[body] ?? match;
-    });
-}
-
-function decodeInlineEntities(nodes: InlineNode[]): InlineNode[] {
-    return nodes.map((node) => {
-        if (node.type === "text") {
-            return { ...node, value: decodeEntities(node.value) };
-        }
-        if ("children" in node && Array.isArray(node.children)) {
-            return { ...node, children: decodeInlineEntities(node.children) } as InlineNode;
-        }
-        return node;
-    });
-}
-
-/**
- * TanStack Markdown leaves character references (`&nbsp;`, `&amp;`, `&#8230;`, ...) as literal
- * text, while react-markdown (CommonMark) decodes them. Decode them in text nodes so existing
- * content keeps rendering the same characters.
- */
-const entityDecoderExtension: MarkdownExtension = {
-    name: "react-markdown-typewriter:decode-entities",
-    transformInline: (nodes) => decodeInlineEntities(nodes),
-};
 
 /**
  * TanStack's React renderer always passes inline content to a component as an array (even a
@@ -156,7 +93,8 @@ export function MarkdownRenderer({
     // every re-render of the (animating) parent.
     // biome-ignore lint/correctness/useExhaustiveDependencies: `options` is a new object every render; its parse-relevant fields are listed
     const document = useMemo(
-        () => parseMarkdown(children, { ...options, extensions: mergedExtensions }),
+        () =>
+            toReactDocument(parseMarkdown(children, { ...options, extensions: mergedExtensions })),
         [
             children,
             mergedExtensions,

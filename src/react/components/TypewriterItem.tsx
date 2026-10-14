@@ -3,9 +3,15 @@ import {
     revealAfterMotionFrame,
     useAncestorPropagation,
     useRevealSlot,
-} from "@/functions/revealSlots";
-import type { SpecialCharacterOptions } from "@/interfaces/MarkdownTypewriterProps";
-import emojiRegex from "emoji-regex";
+} from "@/react/functions/revealSlots";
+import {
+    buildDelayAfterMap,
+    computeRevealSchedule,
+    countStringSlots,
+    type SlotOptions,
+    splitStringToCharactersAndEmoji,
+} from "@/core/characters";
+import type { SpecialCharacterOptions } from "@/react/interfaces/MarkdownTypewriterProps";
 import { motion, type Variants } from "motion/react";
 import {
     type Key,
@@ -18,9 +24,6 @@ import {
     useRef,
     useState,
 } from "react";
-
-// Created once at module level to avoid re-instantiating the regex on every call.
-const EMOJI_REGEX = emojiRegex();
 
 // Variants for invisible phantom spans used to consume stagger slots (extra pause).
 const PHANTOM_VARIANTS: Variants = { hidden: { opacity: 0 }, visible: { opacity: 0 } };
@@ -37,36 +40,6 @@ function throttle(func: (...args: unknown[]) => void, limit: number) {
             func(...args);
         }
     };
-}
-
-/**
- * Splits a string into an array of characters, preserving emojis as single elements.
- *
- * For example:
- *
- * - "Hello" -> ["H", "e", "l", "l", "o"]
- * - "Hello 😊" -> ["H", "e", "l", "l", "o", " ", "😊"]
- * @param str The input string to split.
- * @returns An array of characters and emojis.
- */
-function splitStringToCharactersAndEmoji(str: string): string[] {
-    const result: string[] = [];
-    let lastIndex = 0;
-
-    str.replace(EMOJI_REGEX, (match, offset) => {
-        if (offset > lastIndex) {
-            result.push(...str.slice(lastIndex, offset).split(""));
-        }
-        result.push(match);
-        lastIndex = offset + match.length;
-        return match;
-    });
-
-    if (lastIndex < str.length) {
-        result.push(...str.slice(lastIndex).split(""));
-    }
-
-    return result;
 }
 
 /**
@@ -166,62 +139,6 @@ const CharacterSpan = memo(function CharacterSpan({
 });
 
 /**
- * Pre-computes the effective `delayAfter` for every character in `chars`.
- *
- * **Default mode** (`accumulate = false`):
- * Each special character fires its own `delayAfter` unless the immediately following
- * character is also a special character (consecutive-any rule). The optional
- * `nextCharFromSibling` handles the cross-sibling boundary for the last char.
- *
- * **Accumulate mode** (`accumulate = true`):
- * Any unbroken run of characters that each have a `delayAfter` configured is treated
- * as a single unit: all but the last are silenced, and the last fires with the sum of
- * all delays in the run. Non-special characters (or React-element boundaries) break
- * the run. Cross-sibling accumulation is not performed.
- */
-function buildDelayAfterMap(
-    chars: string[],
-    nextCharFromSibling: string | undefined,
-    specialCharacters: { [char: string]: SpecialCharacterOptions } | undefined,
-    accumulate: boolean,
-): (number | undefined)[] {
-    if (!specialCharacters) return chars.map(() => undefined);
-
-    if (accumulate) {
-        const result = new Array<number | undefined>(chars.length).fill(undefined);
-        let i = 0;
-        while (i < chars.length) {
-            const delay = specialCharacters[chars[i]]?.delayAfter;
-            if (delay !== undefined) {
-                let sum = delay;
-                let j = i + 1;
-                while (j < chars.length) {
-                    const d = specialCharacters[chars[j]]?.delayAfter;
-                    if (d === undefined) break;
-                    sum += d;
-                    j++;
-                }
-                result[j - 1] = sum;
-                i = j;
-            } else {
-                i++;
-            }
-        }
-        return result;
-    }
-
-    // Default: fire unless the immediately following char is also a special character.
-    return chars.map((char, i) => {
-        const delay = specialCharacters[char]?.delayAfter;
-        if (delay === undefined) return undefined;
-        const next = i < chars.length - 1 ? chars[i + 1] : nextCharFromSibling;
-        return next !== undefined && specialCharacters[next]?.delayAfter !== undefined
-            ? undefined
-            : delay;
-    });
-}
-
-/**
  * Builds the span(s) for a single character, including any phantom stagger-slot spans
  * needed to implement `delay` (before the character) or `delayAfter` (after the character).
  *
@@ -300,38 +217,6 @@ function renderCharSpans(
     }
 
     return spans;
-}
-
-/**
- * Computes each character's absolute reveal offset (ms, relative to this block's own start),
- * given the same `delay`/`delayAfter`/`accumulateConsecutiveDelays` semantics that
- * `renderCharSpans`'s phantom-slot counting implements for the array path - but expressed
- * directly as a schedule instead of as extra sibling slots for Framer's `staggerChildren` to
- * count. This is what lets each character self-schedule via a plain timer instead of every
- * character needing to be a live, simultaneously-mounted motion component from the start.
- */
-function computeRevealSchedule(
-    chars: string[],
-    delayAfterMap: (number | undefined)[],
-    specialCharacters: { [char: string]: SpecialCharacterOptions } | undefined,
-    baseDelay: number,
-): number[] {
-    const result = new Array<number>(chars.length);
-    let slot = 0;
-    for (let i = 0; i < chars.length; i++) {
-        const specialConfig = specialCharacters?.[chars[i]];
-        if (baseDelay > 0 && specialConfig?.delay !== undefined) {
-            const extraMs = specialConfig.delay - baseDelay;
-            slot += Math.max(0, Math.round(extraMs / baseDelay));
-        }
-        result[i] = slot * baseDelay;
-        slot += 1;
-        const effectiveDelayAfter = delayAfterMap[i];
-        if (baseDelay > 0 && effectiveDelayAfter !== undefined) {
-            slot += Math.max(0, Math.round((effectiveDelayAfter - baseDelay) / baseDelay));
-        }
-    }
-    return result;
 }
 
 // Characters per chunk for `SelfDrivenCharSpans`'s rendering (see `CharacterChunk`). Large
@@ -502,53 +387,10 @@ function SelfDrivenCharSpans({
  * the shared timeline for content that actually takes many characters' worth of time to reveal
  * internally, letting the NEXT block start while this one is still mid-reveal (see
  * `DelayedOldMechanismBlock` - it only prevents overlap if the reservation is accurate).
- */
-interface SlotOptions {
-    specialCharacters: { [char: string]: SpecialCharacterOptions } | undefined;
-    accumulate: boolean;
-    baseDelay: number;
-}
-
-/**
- * Counts the stagger slots a run of characters occupies in the old (phantom-span) mechanism:
- * one per visible character plus every phantom `renderCharSpans` inserts for `delay`/`delayAfter`.
- * Ignoring the phantoms made punctuation-heavy mixed paragraphs reserve far less time than they
- * actually take, so the predicted end of the reveal (and the caller's `onAnimationComplete`)
- * fired while the text was still typing.
- */
-function countStringSlots(
-    str: string,
-    nextCharFromSibling: string | undefined,
-    { specialCharacters, accumulate, baseDelay }: SlotOptions,
-): number {
-    const chars = splitStringToCharactersAndEmoji(str);
-    if (!specialCharacters || baseDelay <= 0) return chars.length;
-    const delayAfterMap = buildDelayAfterMap(
-        chars,
-        nextCharFromSibling,
-        specialCharacters,
-        accumulate,
-    );
-    let slots = 0;
-    for (let i = 0; i < chars.length; i++) {
-        const specialConfig = specialCharacters[chars[i]];
-        if (specialConfig?.delay !== undefined) {
-            slots += Math.max(0, Math.round((specialConfig.delay - baseDelay) / baseDelay));
-        }
-        slots += 1;
-        const effectiveDelayAfter = delayAfterMap[i];
-        if (effectiveDelayAfter !== undefined) {
-            slots += Math.max(0, Math.round((effectiveDelayAfter - baseDelay) / baseDelay));
-        }
-    }
-    return slots;
-}
-
-/**
- * Recursively estimates how many reveal "slots" a single array-branch child is worth (see the
- * doc comment above), mirroring how `TypewriterItem` itself renders strings: in an array, a
- * string looks at its next string sibling for the consecutive-`delayAfter` rule (default mode
- * only); a lone nested string (e.g. inside `*em*`) does not.
+ *
+ * Mirrors how `TypewriterItem` itself renders strings: in an array, a string looks at its next
+ * string sibling for the consecutive-`delayAfter` rule (default mode only); a lone nested string
+ * (e.g. inside `*em*`) does not.
  */
 function estimateElementSlots(node: unknown, options: SlotOptions): number {
     if (typeof node === "string") {
