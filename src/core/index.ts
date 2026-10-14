@@ -1,5 +1,5 @@
 /**
- * Framework-agnostic part of react-markdown-typewriter: @tanstack/markdown extensions and the
+ * Framework-agnostic part of markdown-typewriter: @tanstack/markdown extensions and the
  * typewriter timing rules. It imports neither React nor motion.
  */
 import { entityDecoderExtension } from "@/core/entities";

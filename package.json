@@ -1,7 +1,7 @@
 {
-  "name": "react-markdown-typewriter",
+  "name": "markdown-typewriter",
   "version": "2.1.0",
-  "description": "React Markdown component (powered by @tanstack/markdown) with a typewriter effect animated with motion.",
+  "description": "Markdown typewriter effect, powered by @tanstack/markdown: a framework-agnostic core and a React component animated with motion.",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -71,6 +71,17 @@
     "motion": ">=12.9.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "motion": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@tanstack/markdown": "^1.0.0"

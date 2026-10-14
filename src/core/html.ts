@@ -396,7 +396,7 @@ function transformBlock(block: BlockNode, options: ParseOptions): BlockNode {
 }
 
 export const htmlExtension: MarkdownExtension = {
-    name: "react-markdown-typewriter:html",
+    name: "markdown-typewriter:html",
     transformDocument(document: MarkdownDocument, { options }) {
         return { ...document, children: transformBlocks(document.children, options) };
     },

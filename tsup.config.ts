@@ -52,7 +52,7 @@ export default defineConfig((options) => {
             format: ["cjs"],
             dts: true, // index.d.ts, used by "types"/require consumers
             // @tanstack/markdown ships ESM only: bundle it (zero dependencies, a few KB) into the
-            // CommonJS build so `require("react-markdown-typewriter")` also works where require()
+            // CommonJS build so `require("markdown-typewriter")` also works where require()
             // can't load ES modules.
             external: ["motion", "react", "react-dom"],
             noExternal: [TANSTACK_MARKDOWN],

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MarkdownTypewriter } from "react-markdown-typewriter/react";
+import { MarkdownTypewriter } from "markdown-typewriter/react";
 
 const DELAY = 30;
 
@@ -439,7 +439,7 @@ export default function App() {
                 padding: "0 20px",
             }}
         >
-            <h1 style={{ fontSize: 20, marginBottom: 8 }}>react-markdown-typewriter playground</h1>
+            <h1 style={{ fontSize: 20, marginBottom: 8 }}>markdown-typewriter playground</h1>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
                 {cases.map((c, i) => (

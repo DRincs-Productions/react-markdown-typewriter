@@ -61,6 +61,6 @@ function decodeInlineEntities(nodes: InlineNode[]): InlineNode[] {
  * content keeps rendering the same characters.
  */
 export const entityDecoderExtension: MarkdownExtension = {
-    name: "react-markdown-typewriter:decode-entities",
+    name: "markdown-typewriter:decode-entities",
     transformInline: (nodes) => decodeInlineEntities(nodes),
 };

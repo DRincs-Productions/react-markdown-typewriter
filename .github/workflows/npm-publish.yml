@@ -36,7 +36,21 @@ jobs:
           npm i
           npm ci
           npm run build
-      - run: npm publish -f
+      # The package was renamed from react-markdown-typewriter to markdown-typewriter. Every release
+      # is published under both names (same build), and the old name is marked as deprecated.
+      - name: Publish as react-markdown-typewriter (deprecated name)
+        run: |
+          npm pkg set name=react-markdown-typewriter
+          npm publish -f
+          npm pkg set name=markdown-typewriter
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - name: Publish as markdown-typewriter
+        run: npm publish -f
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - name: Deprecate react-markdown-typewriter
+        run: npm deprecate react-markdown-typewriter "react-markdown-typewriter has been renamed to markdown-typewriter. Run 'npm install markdown-typewriter' and import from 'markdown-typewriter' (or 'markdown-typewriter/react')."
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 

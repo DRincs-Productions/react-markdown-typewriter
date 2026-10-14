@@ -1,6 +1,11 @@
-# React Markdown Typewriter
+# Markdown Typewriter
 
-This library provides the `MarkdownTypewriter` component, which renders Markdown with [@tanstack/markdown](https://www.npmjs.com/package/@tanstack/markdown) and reveals it with a typewriter animation. The animation was created entirely with [motion](https://www.npmjs.com/package/motion).
+This library renders Markdown with [@tanstack/markdown](https://www.npmjs.com/package/@tanstack/markdown) and reveals it with a typewriter animation. Like @tanstack/markdown, it has two entry points:
+
+* `markdown-typewriter/react`: the `MarkdownTypewriter` React component, animated with [motion](https://www.npmjs.com/package/motion).
+* `markdown-typewriter/core`: the framework-agnostic part (no React, no motion) — the @tanstack/markdown extensions it parses with and the typewriter timing rules — to build the same effect with any other framework or plain JavaScript. See [Core (without React)](#core-without-react).
+
+> **Renamed:** this package was published as `react-markdown-typewriter` up to 2.0; it is now `markdown-typewriter`. Every release is still published under both names, but `react-markdown-typewriter` is deprecated: see [Migrating from 2.0](#migrating-from-20).
 
 Live demo: <https://codesandbox.io/p/sandbox/react-markdown-typewriter-rgjf6t>
 
@@ -17,19 +22,22 @@ For this reason I created this component that I later decided to make available 
 ## Install
 
 ```bash
-npm install react-markdown-typewriter motion
+# React
+npm install markdown-typewriter motion
+# core only (no React)
+npm install markdown-typewriter
 ```
 
-`react`, `react-dom` (18 or newer) and `motion` (12.9 or newer) are peer dependencies. `@tanstack/markdown` is installed automatically.
+`@tanstack/markdown` is installed automatically. The React entry point also needs `react`, `react-dom` (18 or newer) and `motion` (12.9 or newer), declared as optional peer dependencies (the core does not use them).
 
-The package ships both ESM (`import`) and CommonJS (`require`) builds. `@tanstack/markdown` is published as ESM only, so the CommonJS build bundles it: `require("react-markdown-typewriter")` works even where `require()` cannot load ES modules.
+The package ships both ESM (`import`) and CommonJS (`require`) builds. `@tanstack/markdown` is published as ESM only, so the CommonJS build bundles it: `require("markdown-typewriter")` works even where `require()` cannot load ES modules.
 
 ## Use
 
 This is a very simple example of how to use the component:
 
 ```tsx
-import { MarkdownTypewriter } from "react-markdown-typewriter";
+import { MarkdownTypewriter } from "markdown-typewriter/react";
 
 export default function NarrationScreen() {
     return (
@@ -44,7 +52,7 @@ This is a more complex example:
 
 ```tsx
 import { useCallback, useRef } from "react";
-import { MarkdownTypewriter } from "react-markdown-typewriter";
+import { MarkdownTypewriter } from "markdown-typewriter/react";
 
 export default function NarrationScreen() {
     const paragraphRef = useRef<HTMLDivElement>(null);
@@ -90,7 +98,7 @@ Extra syntax is enabled with @tanstack/markdown [extensions](https://github.com/
 
 ```tsx
 import { calloutsExtension } from "@tanstack/markdown/extensions/callouts";
-import { MarkdownTypewriter } from "react-markdown-typewriter";
+import { MarkdownTypewriter } from "markdown-typewriter/react";
 
 const extensions = [calloutsExtension()];
 
@@ -139,6 +147,34 @@ Use `components` to replace the element rendered for an HTML tag (keyed by tag n
 ```
 
 A replaced element is no longer animated by the library: to keep its text typing out, render its children inside motion elements that use the same `hidden`/`visible` variants as the characters (see `motionProps.characterVariants`).
+
+## Core (without React)
+
+`markdown-typewriter/core` contains everything that does not depend on React, so the same Markdown dialect and the same timing rules can be used with any framework (or none):
+
+* `typewriterExtensions({ allowHtml })`: the @tanstack/markdown extensions `MarkdownTypewriter` parses with — HTML character references decoding (`entityDecoderExtension`) and, with `allowHtml`, raw HTML rebuilt into sanitized elements (`htmlExtension`).
+* `createTypewriterSchedule(text, { delay, specialCharacters, accumulateConsecutiveDelays })`: when each character (emoji kept whole) should appear, with the same rules as the React component.
+* `splitCharacters(text)`, `decodeEntities(text)`, `tokenizeHtml(html)` and the `SpecialCharacterTiming` type.
+
+```ts
+import { renderHtml } from "@tanstack/markdown/html";
+import { createTypewriterSchedule, typewriterExtensions } from "markdown-typewriter/core";
+
+// Same Markdown dialect as the React component; raw HTML is sanitized (no <script>, no on* handlers).
+const html = renderHtml('Hello <span style="color:blue">**blue**</span> world', {
+    allowHtml: true,
+    extensions: typewriterExtensions({ allowHtml: true }),
+});
+
+// Same timing rules as the React component.
+const { characters, durationMs } = createTypewriterSchedule("Hello, world.", {
+    delay: 30,
+    specialCharacters: { ",": { delayAfter: 150 } },
+});
+for (const { char, at } of characters) {
+    setTimeout(() => output.append(char), at);
+}
+```
 
 ## API
 
@@ -193,7 +229,7 @@ When `accumulateConsecutiveDelays={true}`, any unbroken run of characters that e
 #### Example
 
 ```tsx
-import { MarkdownTypewriter } from "react-markdown-typewriter";
+import { MarkdownTypewriter } from "markdown-typewriter/react";
 
 export default function NarrationScreen() {
     return (
@@ -233,14 +269,21 @@ You can also override the animation for a specific character:
 </MarkdownTypewriter>
 ```
 
+## Migrating from 2.0
+
+1. Replace the package: `npm uninstall react-markdown-typewriter && npm install markdown-typewriter`.
+2. Import the component from the React entry point: `import { MarkdownTypewriter } from "markdown-typewriter/react";`.
+
+Nothing else changes. Importing `MarkdownTypewriter` from the package root still works but is deprecated: the root also re-exports `markdown-typewriter/core`.
+
 ## Migrating from 1.x
 
 Version 2 renders Markdown with [@tanstack/markdown](https://github.com/TanStack/markdown) instead of [react-markdown](https://github.com/remarkjs/react-markdown) (unified/remark/rehype). The typewriter props (`delay`, `motionProps`, `specialCharacters`, `accumulateConsecutiveDelays`) are unchanged; the Markdown props are now @tanstack/markdown's.
 
 ### Steps
 
-1. Uninstall what is no longer needed: `npm uninstall react-markdown remark-gfm rehype-raw` (if nothing else in your app uses them).
-2. Replace `MarkdownTypewriterHooks`/`MarkdownTypewriterAsync` with `MarkdownTypewriter`.
+1. Uninstall what is no longer needed and install the renamed package: `npm uninstall react-markdown-typewriter react-markdown remark-gfm rehype-raw` (keep react-markdown/remark-gfm/rehype-raw if something else in your app uses them), then `npm install markdown-typewriter`.
+2. Replace `MarkdownTypewriterHooks`/`MarkdownTypewriterAsync` with `MarkdownTypewriter`, imported from `markdown-typewriter/react`.
 3. Replace the react-markdown props:
 
 | 1.x (react-markdown) | 2.x (@tanstack/markdown) |
