@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MarkdownTypewriter, MarkdownTypewriterHooks } from "react-markdown-typewriter";
+import { MarkdownTypewriter } from "react-markdown-typewriter";
 
 const DELAY = 30;
 
@@ -381,6 +381,26 @@ const cases: {
         label: "Fixed: sequential raw HTML paragraphs",
         text: '<span style="color:blue">some *blue* text</span>.\n\n<span style="color:red">some *red* text</span>.\n\n<span style="color:green">some *green* text</span>.',
     },
+    // ── raw HTML (allowHtml) ─────────────────────────────────────────────────────
+    // Raw HTML is rebuilt into real elements (not injected as a string), so its text types out
+    // like the rest of the document while its attributes (style, class, ...) still apply.
+    {
+        label: "HTML: inline styled",
+        text: 'The sky is <span style="color:blue;font-weight:bold">deep **blue**</span> tonight, and the moon is <span style="color:orange">orange</span>.',
+        specialCharacters: SPECIAL_CHARACTERS,
+    },
+    {
+        label: "HTML: nested + void",
+        text: "A <b>bold <i>and italic</i></b> line,<br>then <u>underlined</u> and <mark>marked</mark> text <sup>1</sup>.",
+    },
+    {
+        label: "HTML: block with markdown",
+        text: '<div style="border-left:4px solid teal;padding-left:8px">\n\nInside a **div**: _markdown_ still works.\n\n</div>\n\nAfter the div.',
+    },
+    {
+        label: "HTML: unsafe input",
+        text: 'Safe <script>alert("x")</script>text, <a href="javascript:alert(1)" onclick="alert(2)">no js link</a>, <a href="https://example.com">real link</a>.',
+    },
 ];
 
 export default function App() {
@@ -388,8 +408,6 @@ export default function App() {
     const [key, setKey] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const [stats, setStats] = useState({ live: 0, settled: 0 });
-    const [useHooks, setUseHooks] = useState(false);
-    const Typewriter = useHooks ? MarkdownTypewriterHooks : MarkdownTypewriter;
 
     const current = cases[active];
 
@@ -461,22 +479,6 @@ export default function App() {
                 >
                     ↺ Replay
                 </button>
-                <button
-                    type="button"
-                    onClick={() => {
-                        setUseHooks((v) => !v);
-                        setKey((k) => k + 1);
-                    }}
-                    style={{
-                        padding: "4px 10px",
-                        borderRadius: 4,
-                        border: "1px solid #ccc",
-                        cursor: "pointer",
-                        fontSize: 13,
-                    }}
-                >
-                    Component: {useHooks ? "MarkdownTypewriterHooks" : "MarkdownTypewriter"}
-                </button>
             </div>
 
             <div style={{ display: "flex", gap: 16, marginBottom: 8, fontSize: 13, color: "#666" }}>
@@ -496,14 +498,15 @@ export default function App() {
                     lineHeight: 1.6,
                 }}
             >
-                <Typewriter
+                <MarkdownTypewriter
                     key={key}
                     delay={DELAY}
                     specialCharacters={current.specialCharacters}
                     accumulateConsecutiveDelays={current.accumulateConsecutiveDelays}
+                    allowHtml
                 >
                     {current.text}
-                </Typewriter>
+                </MarkdownTypewriter>
             </div>
 
             <pre

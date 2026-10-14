@@ -48,11 +48,13 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
     const revealSlotApi = useRevealSlotApi(key);
 
     // Schedules the caller's onAnimationComplete off the reveal-slot timeline instead of Framer's
-    // onAnimationComplete on the wrapper span below - see MarkdownTypewriterHooks for why that
-    // fires far too early (near-instantly, regardless of staggerChildren). Markdown (unlike
-    // MarkdownHooks) mounts its tree synchronously, so by the time this passive effect runs -
-    // strictly after every descendant's own mount-time useLayoutEffect in the same commit - the
-    // reveal-slot cursor already reflects the whole document's predicted total duration.
+    // onAnimationComplete on the wrapper span below: the wrapper's own "visible" variant doesn't
+    // animate any real property - it only configures timing for descendants - so Framer considers
+    // it complete almost instantly, regardless of staggerChildren, well before the text/images/
+    // links have actually been revealed. The markdown tree mounts synchronously, so by the time
+    // this passive effect runs - strictly after every descendant's own mount-time useLayoutEffect
+    // in the same commit - the reveal-slot cursor already reflects the whole document's predicted
+    // total duration.
     useEffect(() => {
         if (!userOnAnimationComplete) return;
         return scheduleRevealComplete(revealSlotApi.peek(), () =>

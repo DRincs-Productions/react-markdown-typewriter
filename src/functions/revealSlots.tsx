@@ -44,13 +44,13 @@ function createRevealSlotApi(): RevealSlotAPI {
 
 /**
  * Creates the claim/release/peek API backing a `RevealSlotProvider`. Exposed as its own hook so a
- * top-level component (e.g. `MarkdownTypewriterHooks`) can hold the SAME api object it hands to
+ * top-level component (e.g. `MarkdownTypewriter`) can hold the SAME api object it hands to
  * the provider, and read `peek()` itself once every block has mounted - rather than only being
  * able to reach it as a context *consumer*, which its own subtree's Provider element can never
  * make it one of.
  *
  * Pass the same `key` the caller already uses to force-remount its `RevealSlotProvider` on new
- * text (e.g. `MarkdownTypewriterHooks`'s own `key`). Without it, the returned api - and so its
+ * text (e.g. `MarkdownTypewriter`'s own `key`). Without it, the returned api - and so its
  * cursor - would live for the component's whole lifetime instead of resetting per text, since
  * (unlike the provider itself) this hook's owner doesn't remount when only its `children` prop
  * changes.

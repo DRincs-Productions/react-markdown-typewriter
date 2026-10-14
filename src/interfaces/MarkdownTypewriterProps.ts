@@ -1,7 +1,7 @@
 import type { HTMLMotionProps, Variants } from "motion/react";
 import type { MarkdownComponentMap } from "@/functions/tanstackMarkdown";
 import type { MarkdownReactOptions } from "@tanstack/markdown/react";
-import type { ReactNode, RefObject } from "react";
+import type { RefObject } from "react";
 
 /**
  * Per-character animation overrides for a single special character.
@@ -169,10 +169,3 @@ interface MarkdownOptions extends Omit<MarkdownReactOptions, "components"> {
     components?: MarkdownComponentMap;
 }
 export default interface MarkdownTypewriterProps extends MarkdownOptions, TypewriterProps {}
-export interface MarkdownTypewriterHooksProps extends MarkdownOptions, TypewriterProps {
-    /**
-     * Kept for API compatibility with the react-markdown based version: TanStack Markdown
-     * renders synchronously, so there is no loading state and the fallback is never shown.
-     */
-    fallback?: ReactNode;
-}

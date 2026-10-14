@@ -605,7 +605,7 @@ function estimateArrayBlockDurationMs(childArray: unknown[], options: SlotOption
  * `animate` starts equal to `initial` (both "hidden"), so nothing animates yet and there's no
  * transition to prematurely resolve; only once a plain JS timer (matching the claimed offset)
  * flips local state to "visible" does the transition begin - the same pattern
- * `MarkdownTypewriterHooks` already uses for its own top-level gate.
+ * `MarkdownTypewriter` uses for its own top-level wrapper.
  *
  * (Leaving `animate` unset until the flip instead of starting at "hidden" - tried in v1.3.8 -
  * made the flip never animate at all when it happened in this layout effect, so mixed paragraphs

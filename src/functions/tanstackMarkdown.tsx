@@ -1,4 +1,6 @@
 import type { InlineNode, MarkdownExtension } from "@tanstack/markdown";
+import { htmlExtension } from "@/functions/htmlExtension";
+import { parseMarkdown } from "@tanstack/markdown/parser";
 import { type MarkdownReactOptions, renderMarkdownReact } from "@tanstack/markdown/react";
 import { type ComponentType, Fragment, type ReactNode, useMemo } from "react";
 
@@ -140,11 +142,33 @@ export function MarkdownRenderer({
         () => (components ? wrapComponents(components) : undefined),
         [components],
     );
+    const { allowHtml, urlTransform, frontmatter, headingIds, references, footnotes } = options;
     const mergedExtensions = useMemo(
-        () => [...(extensions ?? []), entityDecoderExtension],
-        [extensions],
+        () => [
+            ...(extensions ?? []),
+            entityDecoderExtension,
+            // Raw HTML becomes real (animated) elements instead of being injected as a string.
+            ...(allowHtml ? [htmlExtension] : []),
+        ],
+        [extensions, allowHtml],
     );
-    const blocks = renderMarkdownReact(children, {
+    // Parsing is the expensive part: only redo it when the text or a parse option changes, not on
+    // every re-render of the (animating) parent.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: `options` is a new object every render; its parse-relevant fields are listed
+    const document = useMemo(
+        () => parseMarkdown(children, { ...options, extensions: mergedExtensions }),
+        [
+            children,
+            mergedExtensions,
+            allowHtml,
+            urlTransform,
+            frontmatter,
+            headingIds,
+            references,
+            footnotes,
+        ],
+    );
+    const blocks = renderMarkdownReact(document, {
         ...options,
         extensions: mergedExtensions,
         components: wrappedComponents,

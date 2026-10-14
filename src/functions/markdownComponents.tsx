@@ -59,6 +59,10 @@ export default function markdownComponents({
                                     {children}
                                 </MotionComponent>
                             );
+                        // Void elements: no children allowed, nothing to type out.
+                        case "br":
+                        case "wbr":
+                            return <MotionComponent {...componentProps} key={`${tag}-${id}`} />;
                         case "tr":
                             return (
                                 <MotionComponent {...componentProps}>{children}</MotionComponent>
@@ -120,19 +124,14 @@ export default function markdownComponents({
                                     specialCharacters={specialCharacters}
                                     accumulateConsecutiveDelays={accumulateConsecutiveDelays}
                                     delay={delay}
-                                    dadElement={(children) => {
-                                        if (Array.isArray(children)) {
-                                            return (
-                                                <MotionComponent
-                                                    {...componentProps}
-                                                    key={`${tag}-${id}`}
-                                                >
-                                                    {children}
-                                                </MotionComponent>
-                                            );
-                                        }
-                                        return children;
-                                    }}
+                                    // Always keep the span itself (not just its content), so its
+                                    // attributes - e.g. the `style` of a raw HTML
+                                    // `<span style="color:blue">` - still apply.
+                                    dadElement={(children) => (
+                                        <MotionComponent {...componentProps} key={`${tag}-${id}`}>
+                                            {children}
+                                        </MotionComponent>
+                                    )}
                                 >
                                     {children}
                                 </TypewriterItem>
