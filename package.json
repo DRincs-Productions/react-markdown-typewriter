@@ -1,6 +1,6 @@
 {
   "name": "markdown-typewriter",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Markdown typewriter effect, powered by @tanstack/markdown: a framework-agnostic core and a React component animated with motion.",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

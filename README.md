@@ -182,6 +182,7 @@ for (const { char, at } of characters) {
 
 * `children`: The Markdown text to render.
 * `delay`: The delay in milliseconds between the appearance of one letter and the next. Default: `10`. (Optional)
+* `animated`: When `false`, the text is rendered at once, without the typewriter animation, but with exactly the same Markdown parsing and rendering (raw HTML, entities, components…). Useful for text that has already been typed out (e.g. a dialogue history), so it looks the same as the animated text. Default: `true`. (Optional)
 * `motionProps` (Optional):
   * The props to pass to the [motion span](https://motion.dev/docs/react-motion-component) wrapping the text, e.g. `onAnimationStart`.
   * `onAnimationComplete`: Called once the whole text has been revealed.

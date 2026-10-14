@@ -17,6 +17,7 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
         components: externalComponents,
         specialCharacters,
         accumulateConsecutiveDelays,
+        animated = true,
         ...rest
     } = props;
     const {
@@ -56,15 +57,25 @@ export default function MarkdownTypewriter(props: MarkdownTypewriterProps) {
     // in the same commit - the reveal-slot cursor already reflects the whole document's predicted
     // total duration.
     useEffect(() => {
-        if (!userOnAnimationComplete) return;
+        if (!animated || !userOnAnimationComplete) return;
         return scheduleRevealComplete(revealSlotApi.peek(), () =>
             userOnAnimationComplete("visible"),
         );
-    }, [userOnAnimationComplete, revealSlotApi]);
+    }, [animated, userOnAnimationComplete, revealSlotApi]);
+
+    if (!animated) {
+        // Same parsing and rendering (Markdown dialect, raw HTML, entities, block separators) as the
+        // animated text, without any animation - e.g. for text that has already been typed out.
+        return text ? (
+            <MarkdownRenderer {...rest} components={externalComponents}>
+                {text}
+            </MarkdownRenderer>
+        ) : null;
+    }
 
     if (delay <= 0) {
         console.warn(
-            "MarkdownTypewriter: delay <= 0 is not supported. Use a positive value. If you do not want animation, use the standard @tanstack/markdown Markdown component instead.",
+            "MarkdownTypewriter: delay <= 0 is not supported. Use a positive value. If you do not want animation, set `animated={false}` instead.",
         );
     }
 

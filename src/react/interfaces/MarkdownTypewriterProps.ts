@@ -40,6 +40,13 @@ export interface SpecialCharacterOptions extends SpecialCharacterTiming {
 
 interface TypewriterProps {
     /**
+     * When `false`, the text is rendered at once, without the typewriter animation, but with the
+     * same Markdown parsing and rendering (raw HTML, entities, components...) - e.g. for text that
+     * has already been typed out, so it looks exactly like the animated text it replaces.
+     * @default true
+     */
+    animated?: boolean;
+    /**
      * The delay in milliseconds between the appearance of one letter and the next.
      * @default 10
      */
