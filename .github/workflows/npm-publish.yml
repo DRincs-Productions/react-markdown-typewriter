@@ -49,8 +49,25 @@ jobs:
         run: npm publish -f
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      # `npm deprecate` only applies to the versions it can see, and right after a publish the
+      # registry can still serve metadata without the new version: wait for it, deprecate every
+      # version up to it, and retry until the new version actually shows as deprecated.
       - name: Deprecate react-markdown-typewriter
-        run: npm deprecate react-markdown-typewriter "react-markdown-typewriter has been renamed to markdown-typewriter. Run 'npm install markdown-typewriter' and import from 'markdown-typewriter' (or 'markdown-typewriter/react')."
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          MESSAGE="react-markdown-typewriter has been renamed to markdown-typewriter. Run 'npm install markdown-typewriter' and import from 'markdown-typewriter' (or 'markdown-typewriter/react')."
+          for attempt in $(seq 1 30); do
+            if [ "$(npm view "react-markdown-typewriter@$VERSION" version --prefer-online 2>/dev/null)" = "$VERSION" ]; then
+              npm deprecate "react-markdown-typewriter@<=$VERSION" "$MESSAGE" || true
+              if [ -n "$(npm view "react-markdown-typewriter@$VERSION" deprecated --prefer-online 2>/dev/null)" ]; then
+                echo "react-markdown-typewriter@<=$VERSION deprecated"
+                exit 0
+              fi
+            fi
+            sleep 20
+          done
+          echo "Could not deprecate react-markdown-typewriter@$VERSION" >&2
+          exit 1
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 
